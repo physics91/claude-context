@@ -1,0 +1,26 @@
+# 테스트 및 로컬 파일
+test_*
+*.log
+*.tmp
+*.backup
+
+# 캐시
+.cache/
+*.cache
+
+# OS 파일
+.DS_Store
+Thumbs.db
+
+# 편집기
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 설치 정보 (로컬 전용)
+.install_info
+
+# 개인 설정
+CLAUDE.md
+!examples/CLAUDE.md
