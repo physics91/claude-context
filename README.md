@@ -78,12 +78,25 @@ curl -sSL https://raw.githubusercontent.com/physics91/claude-context/main/instal
 
 ## 🔧 고급 설정
 
+### 첫 대화 커버리지 보장
+
+Claude가 도구를 사용하지 않는 대화에서도 CLAUDE.md를 인식하도록 하려면, CLAUDE.md 파일 상단에 다음과 같은 대화 시작 규칙을 추가하세요:
+
+```markdown
+## 🚀 대화 시작 규칙
+새로운 대화 시작 시 반드시:
+1. Read 도구로 README.md 또는 package.json 읽기
+2. 없다면 LS 도구로 디렉토리 구조 확인
+```
+
+이렇게 하면 첫 대화부터 도구를 사용하게 되어 PreToolUse hook이 실행됩니다.
+
 ### Hook 타입
 
 설치 시 두 가지 hook이 자동으로 설정됩니다:
 
-1. **pre-tool-use**: 도구 사용 전 CLAUDE.md 주입
-2. **pre-compact**: 대화 압축 전 CLAUDE.md 재주입 (긴 대화 대응)
+1. **PreToolUse**: 도구 사용 전 CLAUDE.md 주입
+2. **PreCompact**: 대화 압축 전 CLAUDE.md 재주입 (긴 대화 대응)
 
 ### 선택적 섹션 (향후 지원 예정)
 
