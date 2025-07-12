@@ -208,7 +208,7 @@ check_claude_version() {
     local settings_file=$(find_claude_settings)
     if [[ ! -f "$settings_file" ]]; then
         warning "Claude Code가 설치되어 있지 않거나 설정 파일을 찾을 수 없습니다."
-        warning "Claude Code v0.7.2 이상이 필요합니다."
+        warning "Claude Code v1.0.38 이상이 필요합니다. (hooks 기능 지원)"
         echo -n "계속하시겠습니까? (y/N): "
         read -r response
         if [[ ! "$response" =~ ^[Yy]$ ]]; then

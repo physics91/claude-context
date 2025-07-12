@@ -32,8 +32,8 @@ cd claude-md-hook
 ## 🔧 필수 요구사항
 
 ### Claude Code
-- **최소 버전: v0.7.2**
-- pre-tool-use hook 지원 필요
+- **최소 버전: v1.0.38**
+- v1.0.38에서 hooks 기능 추가됨
 - 버전 확인: Help → About Claude Code
 
 ### 시스템 도구
