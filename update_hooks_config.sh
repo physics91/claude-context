@@ -47,16 +47,28 @@ TEMP_FILE=$(mktemp)
 if jq --arg pretool "$INSTALL_DIR/claude_md_injector.sh" \
      --arg precompact "$INSTALL_DIR/claude_md_precompact.sh" \
      '.hooks = (.hooks // {}) |
-      .hooks["pre-tool-use"] = [
+      .hooks["PreToolUse"] = [
         {
-          "command": $pretool,
-          "timeout": 1000
+          "matcher": "",
+          "hooks": [
+            {
+              "type": "command",
+              "command": $pretool,
+              "timeout": 30000
+            }
+          ]
         }
       ] |
-      .hooks["pre-compact"] = [
+      .hooks["PreCompact"] = [
         {
-          "command": $precompact,
-          "timeout": 1000
+          "matcher": "",
+          "hooks": [
+            {
+              "type": "command",
+              "command": $precompact,
+              "timeout": 1000
+            }
+          ]
         }
       ]' "$SETTINGS_FILE" > "$TEMP_FILE"; then
   mv "$TEMP_FILE" "$SETTINGS_FILE"
@@ -67,8 +79,8 @@ else
 fi
 
 info "업데이트된 hooks:"
-echo "  - pre-tool-use: 도구 사용 전 CLAUDE.md 주입"
-echo "  - pre-compact: 대화 압축 전 CLAUDE.md 재주입"
+echo "  - PreToolUse: 도구 사용 전 CLAUDE.md 주입"
+echo "  - PreCompact: 대화 압축 전 CLAUDE.md 재주입"
 echo
 success "모든 설정이 완료되었습니다!"
 info "Claude Code를 재시작하면 변경사항이 적용됩니다."

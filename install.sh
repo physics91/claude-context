@@ -276,16 +276,28 @@ do_install() {
     local precompact_path="$INSTALL_DIR/claude_md_precompact.sh"
     if jq --arg pretool "$hook_path" --arg precompact "$precompact_path" '
         .hooks = (.hooks // {}) |
-        .hooks["pre-tool-use"] = [
+        .hooks["PreToolUse"] = [
             {
-                "command": $pretool,
-                "timeout": 1000
+                "matcher": "",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": $pretool,
+                        "timeout": 30000
+                    }
+                ]
             }
         ] |
-        .hooks["pre-compact"] = [
+        .hooks["PreCompact"] = [
             {
-                "command": $precompact,
-                "timeout": 1000
+                "matcher": "",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": $precompact,
+                        "timeout": 1000
+                    }
+                ]
             }
         ]
     ' "$settings_file" > "$temp_file"; then
@@ -328,7 +340,7 @@ do_uninstall() {
     if [[ -f "$settings_file" ]]; then
         info "Claude 설정에서 hook 제거 중..."
         local temp_file=$(mktemp)
-        if jq 'del(.hooks["pre-tool-use"]) | del(.hooks["pre-compact"])' "$settings_file" > "$temp_file"; then
+        if jq 'del(.hooks["PreToolUse"]) | del(.hooks["PreCompact"])' "$settings_file" > "$temp_file"; then
             mv "$temp_file" "$settings_file"
             success "설정이 정리되었습니다."
         else
