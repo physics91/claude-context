@@ -31,6 +31,105 @@ success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
 error() { echo -e "${RED}[ERROR]${NC} $1" >&2; exit 1; }
 
+# 패키지 매니저 감지
+detect_package_manager() {
+    if command -v apt-get &>/dev/null; then
+        echo "apt"
+    elif command -v yum &>/dev/null; then
+        echo "yum"
+    elif command -v dnf &>/dev/null; then
+        echo "dnf"
+    elif command -v brew &>/dev/null; then
+        echo "brew"
+    elif command -v apk &>/dev/null; then
+        echo "apk"
+    else
+        echo "unknown"
+    fi
+}
+
+# OS별 패키지 이름 매핑
+get_package_name() {
+    local tool=$1
+    local pkg_manager=$2
+    
+    case "$tool" in
+        "sha256sum")
+            case "$pkg_manager" in
+                "apt"|"yum"|"dnf") echo "coreutils" ;;
+                "brew") echo "coreutils" ;;
+                "apk") echo "coreutils" ;;
+            esac
+            ;;
+        "zcat")
+            case "$pkg_manager" in
+                "apt"|"yum"|"dnf") echo "gzip" ;;
+                "brew") echo "gzip" ;;
+                "apk") echo "gzip" ;;
+            esac
+            ;;
+        *)
+            echo "$tool"
+            ;;
+    esac
+}
+
+# 의존성 자동 설치
+install_dependencies() {
+    local missing_tools=("$@")
+    local pkg_manager=$(detect_package_manager)
+    
+    if [[ "$pkg_manager" == "unknown" ]]; then
+        error "패키지 매니저를 찾을 수 없습니다. 수동으로 설치해주세요: ${missing_tools[*]}"
+    fi
+    
+    # 설치할 패키지 목록 생성 (중복 제거)
+    local packages=()
+    for tool in "${missing_tools[@]}"; do
+        local pkg=$(get_package_name "$tool" "$pkg_manager")
+        if [[ ! " ${packages[@]} " =~ " ${pkg} " ]]; then
+            packages+=("$pkg")
+        fi
+    done
+    
+    info "다음 패키지를 설치합니다: ${packages[*]}"
+    echo -n "계속하시겠습니까? (y/N): "
+    read -r response
+    
+    if [[ ! "$response" =~ ^[Yy]$ ]]; then
+        error "설치가 취소되었습니다."
+    fi
+    
+    # sudo 확인
+    local sudo_cmd=""
+    if [[ $EUID -ne 0 ]] && command -v sudo &>/dev/null; then
+        sudo_cmd="sudo"
+    fi
+    
+    # 패키지 설치
+    case "$pkg_manager" in
+        "apt")
+            $sudo_cmd apt-get update && $sudo_cmd apt-get install -y "${packages[@]}"
+            ;;
+        "yum")
+            $sudo_cmd yum install -y "${packages[@]}"
+            ;;
+        "dnf")
+            $sudo_cmd dnf install -y "${packages[@]}"
+            ;;
+        "brew")
+            brew install "${packages[@]}"
+            ;;
+        "apk")
+            $sudo_cmd apk add "${packages[@]}"
+            ;;
+    esac
+    
+    if [[ $? -ne 0 ]]; then
+        error "패키지 설치에 실패했습니다."
+    fi
+}
+
 # 의존성 확인
 check_dependencies() {
     local missing_deps=()
@@ -42,7 +141,31 @@ check_dependencies() {
     done
     
     if [[ ${#missing_deps[@]} -gt 0 ]]; then
-        error "다음 명령어가 필요합니다: ${missing_deps[*]}\n설치 예시: sudo apt install ${missing_deps[*]}"
+        warning "다음 도구가 설치되어 있지 않습니다: ${missing_deps[*]}"
+        
+        # 자동 설치 제안
+        echo -n "자동으로 설치하시겠습니까? (y/N): "
+        read -r response
+        
+        if [[ "$response" =~ ^[Yy]$ ]]; then
+            install_dependencies "${missing_deps[@]}"
+            
+            # 재확인
+            missing_deps=()
+            for cmd in jq sha256sum gzip zcat; do
+                if ! command -v "$cmd" &>/dev/null; then
+                    missing_deps+=("$cmd")
+                fi
+            done
+            
+            if [[ ${#missing_deps[@]} -gt 0 ]]; then
+                error "일부 도구가 여전히 설치되지 않았습니다: ${missing_deps[*]}"
+            else
+                success "모든 필수 도구가 설치되었습니다!"
+            fi
+        else
+            error "필수 도구가 설치되어 있지 않습니다. 수동으로 설치해주세요."
+        fi
     fi
 }
 

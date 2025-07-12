@@ -36,6 +36,8 @@ curl -sSL https://raw.githubusercontent.com/physics91/claude-context/main/instal
 - Claude Code (Claude Desktop App)
 - Bash shell
 - 기본 Unix 도구: `jq`, `sha256sum`, `gzip`, `zcat`
+  - 설치 스크립트가 자동으로 설치 제안
+  - 또는 수동 설치: `sudo apt install jq coreutils gzip`
 
 ## 📖 사용법
 
