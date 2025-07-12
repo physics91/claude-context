@@ -202,9 +202,27 @@ get_script_dir() {
     fi
 }
 
+# Claude Code 버전 확인
+check_claude_version() {
+    # Claude 설정 파일 존재 여부로 간접 확인
+    local settings_file=$(find_claude_settings)
+    if [[ ! -f "$settings_file" ]]; then
+        warning "Claude Code가 설치되어 있지 않거나 설정 파일을 찾을 수 없습니다."
+        warning "Claude Code v0.7.2 이상이 필요합니다."
+        echo -n "계속하시겠습니까? (y/N): "
+        read -r response
+        if [[ ! "$response" =~ ^[Yy]$ ]]; then
+            error "설치가 취소되었습니다."
+        fi
+    fi
+}
+
 # --- 설치 함수 ---
 do_install() {
     info "CLAUDE.md Hook 설치를 시작합니다..."
+    
+    # Claude Code 버전 확인
+    check_claude_version
     
     # 의존성 확인
     check_dependencies

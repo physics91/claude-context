@@ -33,7 +33,9 @@ curl -sSL https://raw.githubusercontent.com/physics91/claude-context/main/instal
 
 ## 📋 요구사항
 
-- Claude Code (Claude Desktop App)
+- Claude Code (Claude Desktop App) **v0.7.2 이상**
+  - `pre-tool-use` hook은 v0.7.2부터 지원
+  - 버전 확인: Claude Code 메뉴 → About
 - Bash shell
 - 기본 Unix 도구: `jq`, `sha256sum`, `gzip`, `zcat`
   - 설치 스크립트가 자동으로 설치 제안
