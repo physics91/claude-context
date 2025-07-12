@@ -34,8 +34,9 @@ curl -sSL https://raw.githubusercontent.com/physics91/claude-context/main/instal
 
 ## 📋 요구사항
 
-- Claude Code (Claude Desktop App) **v1.0.38 이상**
-  - Hooks 기능은 v1.0.38에서 처음 도입됨
+- Claude Code (Claude Desktop App) **v1.0.41 이상**
+  - v1.0.38에서 hooks 첫 도입, v1.0.41에서 안정화
+  - PreCompact hook 지원을 위해 v1.0.41 이상 권장
   - 버전 확인: Claude Code 메뉴 → About
 - Bash shell
 - 기본 Unix 도구: `jq`, `sha256sum`, `gzip`, `zcat`
