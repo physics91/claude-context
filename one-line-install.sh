@@ -29,6 +29,7 @@ BASE_URL="https://raw.githubusercontent.com/$GITHUB_USER/$GITHUB_REPO/$GITHUB_BR
 SCRIPTS=(
     "install.sh"
     "claude_md_injector.sh"
+    "claude_md_precompact.sh"
     "claude_md_monitor.sh"
     "test_claude_md_hook.sh"
 )

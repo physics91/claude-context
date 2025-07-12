@@ -14,6 +14,7 @@ LOG_DIR="${TMPDIR:-/tmp}"
 # 스크립트 파일 목록
 SCRIPTS=(
     "claude_md_injector.sh"
+    "claude_md_precompact.sh"
     "claude_md_monitor.sh"
     "test_claude_md_hook.sh"
 )
@@ -272,11 +273,18 @@ do_install() {
     
     # hooks 설정 추가/업데이트
     local temp_file=$(mktemp)
-    if jq --arg hook "$hook_path" '
+    local precompact_path="$INSTALL_DIR/claude_md_precompact.sh"
+    if jq --arg pretool "$hook_path" --arg precompact "$precompact_path" '
         .hooks = (.hooks // {}) |
         .hooks["pre-tool-use"] = [
             {
-                "command": $hook,
+                "command": $pretool,
+                "timeout": 1000
+            }
+        ] |
+        .hooks["pre-compact"] = [
+            {
+                "command": $precompact,
                 "timeout": 1000
             }
         ]
@@ -320,7 +328,7 @@ do_uninstall() {
     if [[ -f "$settings_file" ]]; then
         info "Claude 설정에서 hook 제거 중..."
         local temp_file=$(mktemp)
-        if jq 'del(.hooks["pre-tool-use"])' "$settings_file" > "$temp_file"; then
+        if jq 'del(.hooks["pre-tool-use"]) | del(.hooks["pre-compact"])' "$settings_file" > "$temp_file"; then
             mv "$temp_file" "$settings_file"
             success "설정이 정리되었습니다."
         else

@@ -26,6 +26,7 @@ curl -sSL https://raw.githubusercontent.com/physics91/claude-context/main/instal
 ## 🎯 주요 기능
 
 - ✅ **자동 컨텍스트 주입**: Claude Code가 도구를 사용할 때마다 CLAUDE.md 내용 자동 전달
+- ✅ **대화 압축 보호**: PreCompact hook으로 긴 대화에서도 컨텍스트 유지
 - ✅ **전역/프로젝트별 설정**: 기본 설정과 프로젝트별 설정 모두 지원
 - ✅ **스마트 캐싱**: SHA256 해시 기반 변경 감지 및 gzip 압축 캐싱
 - ✅ **즉시 반영**: 파일 수정 시 다음 실행부터 자동 적용
@@ -75,6 +76,13 @@ curl -sSL https://raw.githubusercontent.com/physics91/claude-context/main/instal
 ```
 
 ## 🔧 고급 설정
+
+### Hook 타입
+
+설치 시 두 가지 hook이 자동으로 설정됩니다:
+
+1. **pre-tool-use**: 도구 사용 전 CLAUDE.md 주입
+2. **pre-compact**: 대화 압축 전 CLAUDE.md 재주입 (긴 대화 대응)
 
 ### 선택적 섹션 (향후 지원 예정)
 
