@@ -10,7 +10,7 @@
 
 ```bash
 # 1. 저장소 클론 (private repo)
-git clone https://github.com/YOUR_USERNAME/claude-context.git
+git clone https://github.com/physics91/claude-context.git
 cd claude-context
 
 # 2. 설치 실행
@@ -20,7 +20,7 @@ cd claude-context
 ### 한 줄 설치 (공개 후)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/YOUR_USERNAME/claude-context/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/physics91/claude-context/main/install.sh | bash
 ```
 
 ## 🎯 주요 기능
