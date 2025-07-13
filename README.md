@@ -1,5 +1,11 @@
 # Claude Context
 
+<div align="center">
+
+[English](./README.en.md) | [中文](./README.zh.md) | [日本語](./README.ja.md) | [Español](./README.es.md) | [Français](./README.fr.md) | [Deutsch](./README.de.md) | **한국어**
+
+</div>
+
 > 🤖 Claude Code가 항상 프로젝트 컨텍스트를 기억하도록 하는 자동화 도구
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
