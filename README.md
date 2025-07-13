@@ -3,45 +3,43 @@
 > 🤖 Claude Code가 항상 프로젝트 컨텍스트를 기억하도록 하는 자동화 도구
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Coverage: 100%](https://img.shields.io/badge/Coverage-100%25-brightgreen.svg)](./tests)
 
 ## 🚀 빠른 시작
 
-### 설치
+### 원클릭 설치
 
 ```bash
-# 1. 저장소 클론 (private repo)
-git clone https://github.com/physics91/claude-context.git
-cd claude-context
-
-# 2. 설치 실행
-./install.sh
+curl -sSL https://raw.githubusercontent.com/physics91/claude-context/main/install/one-line-install.sh | bash
 ```
 
-### 한 줄 설치 (공개 후)
+### 수동 설치
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/physics91/claude-context/main/install.sh | bash
+git clone https://github.com/physics91/claude-context.git
+cd claude-context
+./install/install.sh
 ```
 
 ## 🎯 주요 기능
 
-- ✅ **자동 컨텍스트 주입**: Claude Code가 도구를 사용할 때마다 CLAUDE.md 내용 자동 전달
-- ✅ **대화 압축 보호**: PreCompact hook으로 긴 대화에서도 컨텍스트 유지
-- ✅ **전역/프로젝트별 설정**: 기본 설정과 프로젝트별 설정 모두 지원
-- ✅ **스마트 캐싱**: SHA256 해시 기반 변경 감지 및 gzip 압축 캐싱
-- ✅ **즉시 반영**: 파일 수정 시 다음 실행부터 자동 적용
-- ✅ **경량 & 빠른 성능**: 캐시 히트 시 ~10ms
+### 핵심 기능
+- ✅ **자동 컨텍스트 주입**: Claude가 도구 사용 시 CLAUDE.md 자동 로드
+- ✅ **대화 압축 보호**: 긴 대화에서도 컨텍스트 유지 (PreCompact hook)
+- ✅ **전역/프로젝트별 설정**: 유연한 컨텍스트 관리
+- ✅ **스마트 캐싱**: 빠른 성능 (~10ms)
+
+### 고급 기능 (선택사항)
+- 🆕 **토큰 효율성 모니터링**: 자동 대화 요약으로 토큰 절약
+- 🆕 **Gemini 통합**: 지능적인 요약 생성
+- 🆕 **대화 기록 관리**: 이전 대화 참조 가능
 
 ## 📋 요구사항
 
-- Claude Code (Claude Desktop App) **v1.0.41 이상**
-  - v1.0.38에서 hooks 첫 도입, v1.0.41에서 안정화
-  - PreCompact hook 지원을 위해 v1.0.41 이상 권장
-  - 버전 확인: Claude Code 메뉴 → About
+- **Claude Code v1.0.41+** (PreCompact hook 지원)
 - Bash shell
-- 기본 Unix 도구: `jq`, `sha256sum`, `gzip`, `zcat`
-  - 설치 스크립트가 자동으로 설치 제안
-  - 또는 수동 설치: `sudo apt install jq coreutils gzip`
+- 기본 Unix 도구: `jq`, `sha256sum`, `gzip`
+- (선택) `gemini` CLI - 토큰 모니터링 기능용
 
 ## 📖 사용법
 
@@ -49,80 +47,81 @@ curl -sSL https://raw.githubusercontent.com/physics91/claude-context/main/instal
 
 **전역 설정** (`~/.claude/CLAUDE.md`):
 ```markdown
-# 기본 개발 지침
-- 코드는 명확하고 간결하게 작성
-- 의미 있는 변수명 사용
-- 주석은 필요한 곳에만
+# 모든 프로젝트에 적용되는 규칙
+- 항상 테스트를 먼저 작성하세요
+- 한국어로 대화하세요
 ```
 
 **프로젝트별 설정** (`프로젝트루트/CLAUDE.md`):
 ```markdown
-# 프로젝트 규칙
-- TypeScript 4.9+ 사용
-- ESLint airbnb 규칙 준수
-- 모든 함수에 JSDoc 작성
+# 이 프로젝트 전용 규칙
+- TypeScript 사용
+- React 18 기준 코드 작성
 ```
 
-### 2. 모니터링
+### 2. 설정 선택
 
 ```bash
-# 대화형 모니터 실행
-~/.claude/hooks/claude_md_monitor.sh
+# 기본 설정 (대부분의 사용자)
+~/.claude/hooks/install/update_hooks_config.sh
 
-# 로그 분석
-~/.claude/hooks/claude_md_monitor.sh log
-
-# 캐시 상태 확인
-~/.claude/hooks/claude_md_monitor.sh cache
+# 고급 설정 (토큰 모니터링 포함)
+~/.claude/hooks/install/update_hooks_config_enhanced.sh
 ```
 
 ## 🔧 고급 설정
 
-### 첫 대화 커버리지 보장
+### 토큰 모니터링 활성화
 
-Claude가 도구를 사용하지 않는 대화에서도 CLAUDE.md를 인식하도록 하려면, CLAUDE.md 파일 상단에 다음과 같은 대화 시작 규칙을 추가하세요:
+토큰 사용량이 많은 경우 자동 요약 기능을 활성화할 수 있습니다:
 
-```markdown
-## 🚀 대화 시작 규칙
-새로운 대화 시작 시 반드시:
-1. Read 도구로 README.md 또는 package.json 읽기
-2. 없다면 LS 도구로 디렉토리 구조 확인
+1. `gemini` CLI 설치
+2. 고급 설정 선택:
+   ```bash
+   ~/.claude/hooks/install/update_hooks_config_enhanced.sh
+   # 옵션 2 선택
+   ```
+
+### 환경 변수
+
+```bash
+# 주입 확률 조정 (0.0 ~ 1.0)
+export CLAUDE_MD_INJECT_PROBABILITY=0.5
+
+# 캐시 디렉토리 변경
+export XDG_CACHE_HOME=/custom/cache/path
 ```
 
-이렇게 하면 첫 대화부터 도구를 사용하게 되어 PreToolUse hook이 실행됩니다.
+## 🗂️ 프로젝트 구조
 
-### Hook 타입
+```
+claude-context/
+├── src/
+│   ├── core/          # 핵심 hook 스크립트
+│   ├── monitor/       # 토큰 모니터링 시스템
+│   └── utils/         # 공통 유틸리티
+├── install/           # 설치 스크립트
+├── tests/             # 테스트 스위트 (100% 커버리지)
+├── docs/              # 상세 문서
+└── examples/          # 예제 파일
+```
 
-설치 시 두 가지 hook이 자동으로 설정됩니다:
+## 🧪 테스트
 
-1. **PreToolUse**: 도구 사용 전 CLAUDE.md 주입
-2. **PreCompact**: 대화 압축 전 CLAUDE.md 재주입 (긴 대화 대응)
+```bash
+# 전체 테스트 실행
+./tests/test_all.sh
 
-### 선택적 섹션 (향후 지원 예정)
-
-```markdown
-## @always
-항상 포함되는 내용
-
-## @python
-Python 파일 작업 시에만
-
-## @test
-테스트 작성 시에만
+# 개별 컴포넌트 테스트
+./tests/test_claude_md_hook.sh
+./tests/test_token_monitor.sh
 ```
 
 ## 🗑️ 제거
 
 ```bash
-~/.claude/hooks/install.sh --uninstall
+~/.claude/hooks/install/install.sh --uninstall
 ```
-
-## 📊 성능
-
-- 첫 실행: ~100ms (파일 읽기 + 압축)
-- 캐시 히트: ~10ms
-- 캐시 크기: 프로젝트당 ~5KB
-- 메모리 사용: < 10MB
 
 ## 🤝 기여하기
 
@@ -132,10 +131,28 @@ Python 파일 작업 시에만
 4. Push to the branch (`git push origin feature/amazing`)
 5. Open a Pull Request
 
+## 📊 성능
+
+- 첫 실행: ~100ms
+- 캐시 히트: ~10ms
+- 메모리 사용: < 10MB
+
+## 🔍 문제 해결
+
+### Claude가 CLAUDE.md를 인식하지 못할 때
+1. Claude Code 재시작
+2. 설정 확인: `cat ~/.claude/settings.json | jq .hooks`
+3. 로그 확인: `tail -f /tmp/claude_*.log`
+
+### 토큰 모니터링이 작동하지 않을 때
+1. `gemini` 설치 확인
+2. 대화 기록 확인: `ls ~/.claude/history/`
+3. 권한 확인: `ls -la ~/.claude/`
+
 ## 📝 라이선스
 
 MIT License - 자유롭게 사용하세요!
 
 ## 🙏 감사의 말
 
-이 프로젝트는 Claude와 Gemini의 도움으로 만들어졌습니다.
+이 프로젝트는 Claude와 Gemini의 협업으로 만들어졌습니다.

@@ -1,0 +1,1 @@
+src/monitor/claude_md_injector_with_monitor.sh
