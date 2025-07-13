@@ -30,9 +30,9 @@ cd claude-context
 - ✅ **스마트 캐싱**: 빠른 성능 (~10ms)
 
 ### 고급 기능 (선택사항)
-- 🆕 **토큰 효율성 모니터링**: 자동 대화 요약으로 토큰 절약
-- 🆕 **Gemini 통합**: 지능적인 요약 생성
-- 🆕 **대화 기록 관리**: 이전 대화 참조 가능
+- 🆕 **대화 기록 관리**: Gemini 없이 독립적으로 작동
+- 🆕 **자동 대화 추적**: 모든 대화 자동 저장 및 검색
+- 🆕 **토큰 효율성 모니터링**: Gemini 연동으로 지능적 요약
 
 ## 📋 요구사항
 
@@ -59,27 +59,50 @@ cd claude-context
 - React 18 기준 코드 작성
 ```
 
-### 2. 설정 선택
+### 2. 모드 설정
 
 ```bash
-# 기본 설정 (대부분의 사용자)
-~/.claude/hooks/install/update_hooks_config.sh
+# 대화형 설정 (권장)
+~/.claude/hooks/install/configure_hooks.sh
 
-# 고급 설정 (토큰 모니터링 포함)
-~/.claude/hooks/install/update_hooks_config_enhanced.sh
+# 모드 선택:
+# 1) Basic   - CLAUDE.md 주입만
+# 2) History - 대화 기록 관리 (Gemini 불필요)
+# 3) Advanced - 토큰 모니터링 (Gemini 필요)
 ```
+
+### 3. Claude Code 재시작
+
+설정 변경 후 Claude Code를 재시작하면 적용됩니다.
 
 ## 🔧 고급 설정
 
-### 토큰 모니터링 활성화
+### 대화 기록 관리 (Gemini 불필요)
 
-토큰 사용량이 많은 경우 자동 요약 기능을 활성화할 수 있습니다:
+모든 대화를 자동으로 추적하고 관리합니다:
+
+```bash
+# 대화 기록 관리자 사용
+MANAGER=~/.claude/hooks/src/monitor/claude_history_manager.sh
+
+# 세션 목록 보기
+$MANAGER list
+
+# 대화 검색
+$MANAGER search "검색어"
+
+# 세션 내보내기 (markdown/json/txt)
+$MANAGER export <session_id> markdown output.md
+```
+
+### 토큰 모니터링 활성화 (Gemini 필요)
+
+더 지능적인 요약을 원하는 경우:
 
 1. `gemini` CLI 설치
 2. 고급 설정 선택:
    ```bash
    ~/.claude/hooks/install/update_hooks_config_enhanced.sh
-   # 옵션 2 선택
    ```
 
 ### 환경 변수
@@ -97,13 +120,22 @@ export XDG_CACHE_HOME=/custom/cache/path
 ```
 claude-context/
 ├── src/
-│   ├── core/          # 핵심 hook 스크립트
-│   ├── monitor/       # 토큰 모니터링 시스템
-│   └── utils/         # 공통 유틸리티
-├── install/           # 설치 스크립트
-├── tests/             # 테스트 스위트 (100% 커버리지)
-├── docs/              # 상세 문서
-└── examples/          # 예제 파일
+│   ├── core/
+│   │   ├── injector.sh      # 통합 injector (모든 모드 지원)
+│   │   └── precompact.sh    # 통합 precompact hook
+│   ├── monitor/
+│   │   ├── claude_history_manager.sh  # 대화 기록 관리
+│   │   └── claude_token_monitor_safe.sh  # 토큰 모니터링
+│   └── utils/
+│       └── common_functions.sh  # 공통 함수 라이브러리
+├── install/
+│   ├── install.sh           # 설치 스크립트
+│   ├── configure_hooks.sh   # 모드 설정 스크립트
+│   └── one-line-install.sh  # 원클릭 설치
+├── tests/                   # 테스트 스위트
+├── docs/                    # 상세 문서
+├── config.sh.template       # 설정 템플릿
+└── MIGRATION_GUIDE.md       # 마이그레이션 가이드
 ```
 
 ## 🧪 테스트

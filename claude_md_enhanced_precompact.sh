@@ -1,1 +1,0 @@
-src/monitor/claude_md_enhanced_precompact.sh
