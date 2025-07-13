@@ -28,12 +28,12 @@ print_header() {
 
 # 모드 선택
 select_mode() {
-    echo -e "${BLUE}설치 모드를 선택하세요:${NC}"
-    echo
-    echo "1) Basic   - CLAUDE.md 주입만 (가장 간단)"
-    echo "2) History - 대화 기록 관리 추가 (Gemini 불필요)"
-    echo "3) Advanced - 토큰 모니터링 포함 (Gemini 필요)"
-    echo
+    echo -e "${BLUE}설치 모드를 선택하세요:${NC}" >&2
+    echo >&2
+    echo "1) Basic   - CLAUDE.md 주입만 (가장 간단)" >&2
+    echo "2) History - 대화 기록 관리 추가 (Gemini 불필요)" >&2
+    echo "3) Advanced - 토큰 모니터링 포함 (Gemini 필요)" >&2
+    echo >&2
     read -p "선택 [1-3] (기본값: 2): " choice
     
     # 기본값 처리
@@ -44,7 +44,7 @@ select_mode() {
         2) echo "history" ;;
         3) echo "advanced" ;;
         *) 
-            echo -e "${RED}잘못된 선택입니다. 기본값(history)으로 진행합니다.${NC}"
+            echo -e "${RED}잘못된 선택입니다. 기본값(history)으로 진행합니다.${NC}" >&2
             echo "history"
             ;;
     esac
