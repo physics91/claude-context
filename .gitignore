@@ -30,3 +30,6 @@ claude-context/
 # 래퍼 스크립트 (설치 시 생성됨)
 claude_context_injector.sh
 claude_context_precompact.sh
+
+# 설정 파일 (설치 시 생성됨)
+claude-context.conf
