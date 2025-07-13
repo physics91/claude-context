@@ -32,9 +32,11 @@ cd claude-md-hook
 ## 🔧 필수 요구사항
 
 ### Claude Code
-- **최소 버전: v1.0.41**
+- **권장 버전: v1.0.48+** (PreCompact hook 지원)
+- **최소 버전: v1.0.41** (PreToolUse hook만 지원)
 - v1.0.38에서 hooks 기능 추가
 - v1.0.41에서 hook_event_name, timeout 설정 등 개선
+- v1.0.48에서 PreCompact hook 추가 (대화 압축 시 컨텍스트 보호)
 - 버전 확인: Help → About Claude Code
 
 ### 시스템 도구

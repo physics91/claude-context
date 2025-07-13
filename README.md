@@ -25,7 +25,7 @@ cd claude-context
 
 ### 핵심 기능
 - ✅ **자동 컨텍스트 주입**: Claude가 도구 사용 시 CLAUDE.md 자동 로드
-- ✅ **대화 압축 보호**: 긴 대화에서도 컨텍스트 유지 (PreCompact hook)
+- ✅ **대화 압축 보호**: 긴 대화에서도 컨텍스트 유지 (PreCompact hook, v1.0.48+)
 - ✅ **전역/프로젝트별 설정**: 유연한 컨텍스트 관리
 - ✅ **스마트 캐싱**: 빠른 성능 (~10ms)
 
@@ -36,7 +36,8 @@ cd claude-context
 
 ## 📋 요구사항
 
-- **Claude Code v1.0.41+** (PreCompact hook 지원)
+- **Claude Code v1.0.48+** (PreCompact hook 지원은 v1.0.48부터)
+  - v1.0.41 ~ v1.0.47: PreToolUse hook만 지원 (기본 기능은 작동)
 - Bash shell
 - 기본 Unix 도구: `jq`, `sha256sum`, `gzip`
 - (선택) `gemini` CLI - 토큰 모니터링 기능용

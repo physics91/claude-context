@@ -260,6 +260,9 @@ print_usage() {
     echo -e "${BLUE}설치 위치: $INSTALL_DIR${NC}"
     echo -e "${BLUE}설치된 모드: $(echo "$mode" | tr '[:lower:]' '[:upper:]')${NC}"
     echo
+    echo -e "${YELLOW}⚠️  주의: PreCompact hook은 Claude Code v1.0.48+ 에서만 작동합니다.${NC}"
+    echo -e "${YELLOW}   낮은 버전에서는 PreToolUse hook만 사용됩니다.${NC}"
+    echo
     echo "다음 단계:"
     echo "1. CLAUDE.md 파일 생성:"
     echo "   - 전역: ~/.claude/CLAUDE.md"
