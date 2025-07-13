@@ -95,17 +95,18 @@ install_files() {
     # claude-context 디렉토리 생성
     mkdir -p "$INSTALL_DIR"/{src/{core,monitor,utils},tests,docs,examples,config}
     
-    # 파일 복사
-    cp -r "$PROJECT_ROOT"/src/* "$INSTALL_DIR/src/" 2>/dev/null || true
-    cp -r "$PROJECT_ROOT"/tests/* "$INSTALL_DIR/tests/" 2>/dev/null || true
-    cp -r "$PROJECT_ROOT"/docs/* "$INSTALL_DIR/docs/" 2>/dev/null || true
-    cp -r "$PROJECT_ROOT"/examples/* "$INSTALL_DIR/examples/" 2>/dev/null || true
+    # 파일 복사 (flat 구조에서 claude-context로)
+    cp -r "$PROJECT_ROOT"/core "$INSTALL_DIR/src/" 2>/dev/null || true
+    cp -r "$PROJECT_ROOT"/monitor "$INSTALL_DIR/src/" 2>/dev/null || true
+    cp -r "$PROJECT_ROOT"/utils "$INSTALL_DIR/src/" 2>/dev/null || true
+    cp -r "$PROJECT_ROOT"/tests "$INSTALL_DIR/" 2>/dev/null || true
+    cp -r "$PROJECT_ROOT"/docs "$INSTALL_DIR/" 2>/dev/null || true
     
     # 문서 파일 복사
-    cp "$PROJECT_ROOT"/{README.md,MIGRATION_GUIDE.md,CHANGELOG.md} "$INSTALL_DIR/" 2>/dev/null || true
+    cp "$PROJECT_ROOT"/{README.md,config.sh} "$INSTALL_DIR/" 2>/dev/null || true
     
-    # 설정 템플릿 복사
-    cp "$PROJECT_ROOT"/config.sh.template "$INSTALL_DIR/config/" 2>/dev/null || true
+    # uninstall 스크립트 복사
+    cp "$PROJECT_ROOT"/uninstall.sh "$INSTALL_DIR/" 2>/dev/null || true
     
     # wrapper 스크립트 생성 (hooks 디렉토리 루트에)
     cat > "$INSTALL_BASE/claude_context_injector.sh" << 'EOF'
@@ -140,9 +141,11 @@ CLAUDE_CONTEXT_HOME="$INSTALL_DIR"
 CLAUDE_CONTEXT_MODE="$mode"
 EOF
     
-    # config.sh 생성
-    if [[ -f "$INSTALL_DIR/config/config.sh.template" ]]; then
-        sed "s/{{MODE}}/$mode/g" "$INSTALL_DIR/config/config.sh.template" > "$INSTALL_DIR/config.sh"
+    # config.sh 생성 (기존 파일이 있으면 모드만 업데이트)
+    if [[ -f "$PROJECT_ROOT/config.sh" ]]; then
+        # 기존 config.sh 복사하고 모드 업데이트
+        cp "$PROJECT_ROOT/config.sh" "$INSTALL_DIR/config.sh"
+        sed -i "s/^CLAUDE_CONTEXT_MODE=.*/CLAUDE_CONTEXT_MODE=\"$mode\"/" "$INSTALL_DIR/config.sh"
     else
         cat > "$INSTALL_DIR/config.sh" << EOF
 #!/usr/bin/env bash
@@ -156,6 +159,9 @@ CLAUDE_HOOKS_DIR="\${HOME}/.claude/hooks"
 CLAUDE_HISTORY_DIR="\${CLAUDE_HOME}/history"
 CLAUDE_SUMMARY_DIR="\${CLAUDE_HOME}/summaries"
 CLAUDE_CACHE_DIR="\${XDG_CACHE_HOME:-\${HOME}/.cache}/claude-context"
+CLAUDE_LOG_DIR="\${CLAUDE_HOME}/logs"
+CLAUDE_LOCK_TIMEOUT="5"
+CLAUDE_CACHE_MAX_AGE="3600"
 
 export CLAUDE_CONTEXT_MODE
 export CLAUDE_ENABLE_CACHE
@@ -165,6 +171,9 @@ export CLAUDE_HOOKS_DIR
 export CLAUDE_HISTORY_DIR
 export CLAUDE_SUMMARY_DIR
 export CLAUDE_CACHE_DIR
+export CLAUDE_LOG_DIR
+export CLAUDE_LOCK_TIMEOUT
+export CLAUDE_CACHE_MAX_AGE
 EOF
     fi
     
@@ -237,39 +246,8 @@ create_directories() {
 
 # 관리 스크립트 생성
 create_management_scripts() {
-    # configure 스크립트
-    cat > "$INSTALL_DIR/configure.sh" << 'EOF'
-#!/usr/bin/env bash
-# Claude Context 설정 변경 스크립트
-exec "${HOME}/.claude/hooks/claude-context/install/configure_hooks.sh" "$@"
-EOF
-    
-    # uninstall 스크립트
-    cat > "$INSTALL_DIR/uninstall.sh" << 'EOF'
-#!/usr/bin/env bash
-set -euo pipefail
-
-echo "Claude Context를 제거합니다..."
-
-# Claude 설정에서 hooks 제거
-CLAUDE_CONFIG="${HOME}/.claude/settings.json"
-if [[ -f "$CLAUDE_CONFIG" ]]; then
-    jq 'del(.hooks)' "$CLAUDE_CONFIG" > "${CLAUDE_CONFIG}.tmp"
-    mv "${CLAUDE_CONFIG}.tmp" "$CLAUDE_CONFIG"
-fi
-
-# 설치 디렉토리 제거
-rm -rf "${HOME}/.claude/hooks/claude-context"
-rm -f "${HOME}/.claude/hooks/claude_context_"*.sh
-rm -f "${HOME}/.claude/hooks/claude-context.conf"
-
-echo "✓ 제거가 완료되었습니다."
-echo "데이터 디렉토리는 보존됩니다:"
-echo "- ~/.claude/history"
-echo "- ~/.claude/summaries"
-EOF
-    
-    chmod +x "$INSTALL_DIR"/{configure,uninstall}.sh
+    # uninstall.sh는 이미 복사했으므로 실행 권한만 설정
+    chmod +x "$INSTALL_DIR"/uninstall.sh 2>/dev/null || true
 }
 
 # 사용법 출력
@@ -302,7 +280,6 @@ print_usage() {
     
     echo "4. Claude Code 재시작"
     echo
-    echo "설정 변경: $INSTALL_DIR/configure.sh"
     echo "제거: $INSTALL_DIR/uninstall.sh"
 }
 
