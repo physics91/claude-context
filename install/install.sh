@@ -34,15 +34,18 @@ select_mode() {
     echo "2) History - 대화 기록 관리 추가 (Gemini 불필요)"
     echo "3) Advanced - 토큰 모니터링 포함 (Gemini 필요)"
     echo
-    read -p "선택 [1-3]: " choice
+    read -p "선택 [1-3] (기본값: 2): " choice
+    
+    # 기본값 처리
+    choice=${choice:-2}
     
     case $choice in
         1) echo "basic" ;;
         2) echo "history" ;;
         3) echo "advanced" ;;
         *) 
-            echo -e "${RED}잘못된 선택입니다.${NC}"
-            exit 1
+            echo -e "${RED}잘못된 선택입니다. 기본값(history)으로 진행합니다.${NC}"
+            echo "history"
             ;;
     esac
 }
@@ -95,18 +98,40 @@ install_files() {
     # claude-context 디렉토리 생성
     mkdir -p "$INSTALL_DIR"/{src/{core,monitor,utils},tests,docs,examples,config}
     
+    # 필수 파일들의 존재 여부 체크
+    local required_dirs=("core" "monitor" "utils")
+    local missing_count=0
+    
+    for dir in "${required_dirs[@]}"; do
+        if [[ ! -d "$PROJECT_ROOT/$dir" ]]; then
+            echo -e "${RED}오류: 필수 디렉토리 '$dir'를 찾을 수 없습니다${NC}"
+            ((missing_count++))
+        fi
+    done
+    
+    if [[ $missing_count -gt 0 ]]; then
+        echo -e "${RED}설치에 필요한 파일이 누락되었습니다.${NC}"
+        echo "프로젝트 루트: $PROJECT_ROOT"
+        echo "현재 디렉토리 구조:"
+        ls -la "$PROJECT_ROOT"
+        exit 1
+    fi
+    
     # 파일 복사 (flat 구조에서 claude-context로)
-    cp -r "$PROJECT_ROOT"/core "$INSTALL_DIR/src/" 2>/dev/null || true
-    cp -r "$PROJECT_ROOT"/monitor "$INSTALL_DIR/src/" 2>/dev/null || true
-    cp -r "$PROJECT_ROOT"/utils "$INSTALL_DIR/src/" 2>/dev/null || true
-    cp -r "$PROJECT_ROOT"/tests "$INSTALL_DIR/" 2>/dev/null || true
-    cp -r "$PROJECT_ROOT"/docs "$INSTALL_DIR/" 2>/dev/null || true
+    cp -r "$PROJECT_ROOT/core" "$INSTALL_DIR/src/"
+    cp -r "$PROJECT_ROOT/monitor" "$INSTALL_DIR/src/"
+    cp -r "$PROJECT_ROOT/utils" "$INSTALL_DIR/src/"
+    
+    # 선택적 디렉토리 복사
+    [[ -d "$PROJECT_ROOT/tests" ]] && cp -r "$PROJECT_ROOT/tests" "$INSTALL_DIR/"
+    [[ -d "$PROJECT_ROOT/docs" ]] && cp -r "$PROJECT_ROOT/docs" "$INSTALL_DIR/"
     
     # 문서 파일 복사
-    cp "$PROJECT_ROOT"/{README.md,config.sh} "$INSTALL_DIR/" 2>/dev/null || true
+    [[ -f "$PROJECT_ROOT/README.md" ]] && cp "$PROJECT_ROOT/README.md" "$INSTALL_DIR/"
+    [[ -f "$PROJECT_ROOT/config.sh" ]] && cp "$PROJECT_ROOT/config.sh" "$INSTALL_DIR/"
     
     # uninstall 스크립트 복사
-    cp "$PROJECT_ROOT"/uninstall.sh "$INSTALL_DIR/" 2>/dev/null || true
+    [[ -f "$PROJECT_ROOT/uninstall.sh" ]] && cp "$PROJECT_ROOT/uninstall.sh" "$INSTALL_DIR/"
     
     # wrapper 스크립트 생성 (hooks 디렉토리 루트에)
     cat > "$INSTALL_BASE/claude_context_injector.sh" << 'EOF'
@@ -145,7 +170,12 @@ EOF
     if [[ -f "$PROJECT_ROOT/config.sh" ]]; then
         # 기존 config.sh 복사하고 모드 업데이트
         cp "$PROJECT_ROOT/config.sh" "$INSTALL_DIR/config.sh"
-        sed -i "s/^CLAUDE_CONTEXT_MODE=.*/CLAUDE_CONTEXT_MODE=\"$mode\"/" "$INSTALL_DIR/config.sh"
+        # macOS와 Linux 모두 지원하는 sed 사용
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "s/^CLAUDE_CONTEXT_MODE=.*/CLAUDE_CONTEXT_MODE=\"$mode\"/" "$INSTALL_DIR/config.sh"
+        else
+            sed -i "s/^CLAUDE_CONTEXT_MODE=.*/CLAUDE_CONTEXT_MODE=\"$mode\"/" "$INSTALL_DIR/config.sh"
+        fi
     else
         cat > "$INSTALL_DIR/config.sh" << EOF
 #!/usr/bin/env bash

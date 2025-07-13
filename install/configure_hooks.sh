@@ -42,15 +42,18 @@ echo "1) Basic   - CLAUDE.md 주입만"
 echo "2) History - 대화 기록 관리 (Gemini 불필요)"
 echo "3) Advanced - 토큰 모니터링 포함 (Gemini 필요)"
 echo
-read -p "선택 [1-3]: " choice
+read -p "선택 [1-3] (기본값: 2): " choice
+
+# 기본값 처리
+choice=${choice:-2}
 
 case $choice in
     1) MODE="basic" ;;
     2) MODE="history" ;;
     3) MODE="advanced" ;;
     *)
-        echo -e "${RED}잘못된 선택입니다.${NC}"
-        exit 1
+        echo -e "${YELLOW}잘못된 선택입니다. 기본값(history)으로 진행합니다.${NC}"
+        MODE="history"
         ;;
 esac
 
@@ -60,7 +63,12 @@ if [[ -f "${INSTALL_DIR}/config/config.sh.template" ]]; then
 else
     # 기존 config.sh의 MODE만 변경
     if [[ -f "$CONFIG_FILE" ]]; then
-        sed -i.bak "s/^CLAUDE_CONTEXT_MODE=.*/CLAUDE_CONTEXT_MODE=\"$MODE\"/" "$CONFIG_FILE"
+        # macOS와 Linux 호환성을 위한 sed 처리
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "s/^CLAUDE_CONTEXT_MODE=.*/CLAUDE_CONTEXT_MODE=\"$MODE\"/" "$CONFIG_FILE"
+        else
+            sed -i "s/^CLAUDE_CONTEXT_MODE=.*/CLAUDE_CONTEXT_MODE=\"$MODE\"/" "$CONFIG_FILE"
+        fi
     else
         echo -e "${RED}Error: 설정 파일을 찾을 수 없습니다.${NC}"
         exit 1
