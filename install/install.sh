@@ -32,22 +32,24 @@ select_mode() {
     echo >&2
     echo "1) Basic    - CLAUDE.md 주입만 (가장 간단)" >&2
     echo "2) History  - 대화 기록 관리 추가" >&2
-    echo "3) Auto     - 자동 요약 포함 (Claude CLI 사용)" >&2
-    echo "4) Advanced - 자동 요약 포함 (Gemini CLI 필요)" >&2
+    echo "3) OAuth    - 자동 요약 포함 (Claude Code 인증 사용) ⭐️" >&2
+    echo "4) Auto     - 자동 요약 포함 (Claude CLI 필요)" >&2
+    echo "5) Advanced - 자동 요약 포함 (Gemini CLI 필요)" >&2
     echo >&2
-    read -p "선택 [1-4] (기본값: 2): " choice
+    read -p "선택 [1-5] (기본값: 3): " choice
     
     # 기본값 처리
-    choice=${choice:-2}
+    choice=${choice:-3}
     
     case $choice in
         1) echo "basic" ;;
         2) echo "history" ;;
-        3) echo "auto" ;;
-        4) echo "advanced" ;;
+        3) echo "oauth" ;;
+        4) echo "auto" ;;
+        5) echo "advanced" ;;
         *) 
-            echo -e "${RED}잘못된 선택입니다. 기본값(history)으로 진행합니다.${NC}" >&2
-            echo "history"
+            echo -e "${RED}잘못된 선택입니다. 기본값(oauth)으로 진행합니다.${NC}" >&2
+            echo "oauth"
             ;;
     esac
 }
@@ -63,6 +65,28 @@ check_dependencies() {
             missing+=("$cmd")
         fi
     done
+    
+    # OAuth 모드 의존성
+    if [[ "$mode" == "oauth" ]]; then
+        if ! command -v jq &> /dev/null; then
+            echo -e "${YELLOW}경고: 'jq'가 설치되어 있지 않습니다.${NC}"
+            echo "OAuth 모드를 사용하려면 jq가 필요합니다."
+            echo "설치: apt-get install jq (또는 brew install jq)"
+            read -p "계속하시겠습니까? [y/N]: " confirm
+            if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+                exit 1
+            fi
+        fi
+        
+        if [[ ! -f "${HOME}/.claude/.credentials.json" ]]; then
+            echo -e "${YELLOW}경고: Claude Code 인증 파일을 찾을 수 없습니다.${NC}"
+            echo "Claude Code를 먼저 실행하여 로그인해주세요."
+            read -p "계속하시겠습니까? [y/N]: " confirm
+            if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+                exit 1
+            fi
+        fi
+    fi
     
     # Auto 모드 의존성
     if [[ "$mode" == "auto" ]]; then
@@ -282,8 +306,8 @@ create_directories() {
     mkdir -p "${HOME}/.claude"
     mkdir -p "${XDG_CACHE_HOME:-${HOME}/.cache}/claude-context"
     
-    # History/Auto/Advanced 모드 디렉토리
-    if [[ "$mode" == "history" || "$mode" == "auto" || "$mode" == "advanced" ]]; then
+    # History/OAuth/Auto/Advanced 모드 디렉토리
+    if [[ "$mode" == "history" || "$mode" == "oauth" || "$mode" == "auto" || "$mode" == "advanced" ]]; then
         mkdir -p "${HOME}/.claude/history"
         mkdir -p "${HOME}/.claude/summaries"
     fi
@@ -314,9 +338,16 @@ print_usage() {
     echo "   - 프로젝트별: <프로젝트루트>/CLAUDE.md"
     echo
     
-    if [[ "$mode" == "history" || "$mode" == "auto" || "$mode" == "advanced" ]]; then
+    if [[ "$mode" == "history" || "$mode" == "oauth" || "$mode" == "auto" || "$mode" == "advanced" ]]; then
         echo "2. 대화 기록 관리:"
         echo "   $INSTALL_DIR/src/monitor/claude_history_manager.sh --help"
+        echo
+    fi
+    
+    if [[ "$mode" == "oauth" ]]; then
+        echo "3. 자동 요약 기능 (Claude Code OAuth 사용)"
+        echo "   Claude Code의 인증 정보를 자동으로 사용합니다."
+        echo "   별도의 API 키가 필요하지 않습니다!"
         echo
     fi
     

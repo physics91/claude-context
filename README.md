@@ -73,9 +73,11 @@ cd claude-context
 ~/.claude/hooks/install/configure_hooks.sh
 
 # 모드 선택:
-# 1) Basic   - CLAUDE.md 주입만
-# 2) History - 대화 기록 관리 (Gemini 불필요)
-# 3) Advanced - 토큰 모니터링 (Gemini 필요)
+# 1) Basic    - CLAUDE.md 주입만
+# 2) History  - 대화 기록 관리
+# 3) OAuth    - 자동 요약 (Claude Code 인증 사용) ⭐️ 추천!
+# 4) Auto     - 자동 요약 (Claude CLI 필요)
+# 5) Advanced - 자동 요약 (Gemini CLI 필요)
 ```
 
 ### 3. Claude Code 재시작
@@ -102,14 +104,21 @@ $MANAGER search "검색어"
 $MANAGER export <session_id> markdown output.md
 ```
 
-### 토큰 모니터링 활성화 (Gemini 필요)
+### 자동 요약 기능
 
+#### OAuth 모드 (추천) ⭐️
+Claude Code의 인증 정보를 사용하여 API 키 없이 자동 요약:
+- 별도의 API 키 불필요
+- Claude Code 구독 계정 필요
+- `jq` 설치 필요: `apt-get install jq`
+
+#### Advanced 모드 (Gemini 사용)
 더 지능적인 요약을 원하는 경우:
 
 1. `gemini` CLI 설치
 2. 고급 설정 선택:
    ```bash
-   ~/.claude/hooks/install/update_hooks_config_enhanced.sh
+   ~/.claude/hooks/install/configure_hooks.sh
    ```
 
 ### 환경 변수
