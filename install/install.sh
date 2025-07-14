@@ -30,11 +30,12 @@ print_header() {
 select_mode() {
     echo -e "${BLUE}설치 모드를 선택하세요:${NC}" >&2
     echo >&2
-    echo "1) Basic   - CLAUDE.md 주입만 (가장 간단)" >&2
-    echo "2) History - 대화 기록 관리 추가 (Gemini 불필요)" >&2
-    echo "3) Advanced - 토큰 모니터링 포함 (Gemini 필요)" >&2
+    echo "1) Basic    - CLAUDE.md 주입만 (가장 간단)" >&2
+    echo "2) History  - 대화 기록 관리 추가" >&2
+    echo "3) Auto     - 자동 요약 포함 (Claude CLI 사용)" >&2
+    echo "4) Advanced - 자동 요약 포함 (Gemini CLI 필요)" >&2
     echo >&2
-    read -p "선택 [1-3] (기본값: 2): " choice
+    read -p "선택 [1-4] (기본값: 2): " choice
     
     # 기본값 처리
     choice=${choice:-2}
@@ -42,7 +43,8 @@ select_mode() {
     case $choice in
         1) echo "basic" ;;
         2) echo "history" ;;
-        3) echo "advanced" ;;
+        3) echo "auto" ;;
+        4) echo "advanced" ;;
         *) 
             echo -e "${RED}잘못된 선택입니다. 기본값(history)으로 진행합니다.${NC}" >&2
             echo "history"
@@ -61,6 +63,19 @@ check_dependencies() {
             missing+=("$cmd")
         fi
     done
+    
+    # Auto 모드 의존성
+    if [[ "$mode" == "auto" ]]; then
+        if ! command -v claude &> /dev/null; then
+            echo -e "${YELLOW}경고: 'claude' CLI가 설치되어 있지 않습니다.${NC}"
+            echo "Auto 모드를 사용하려면 Claude CLI가 필요합니다."
+            echo "현재 실행 중인 Claude Code에서는 자동 요약이 작동하지 않습니다."
+            read -p "계속하시겠습니까? [y/N]: " confirm
+            if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+                exit 1
+            fi
+        fi
+    fi
     
     # Advanced 모드 의존성
     if [[ "$mode" == "advanced" ]]; then
@@ -267,8 +282,8 @@ create_directories() {
     mkdir -p "${HOME}/.claude"
     mkdir -p "${XDG_CACHE_HOME:-${HOME}/.cache}/claude-context"
     
-    # History 모드 디렉토리
-    if [[ "$mode" == "history" || "$mode" == "advanced" ]]; then
+    # History/Auto/Advanced 모드 디렉토리
+    if [[ "$mode" == "history" || "$mode" == "auto" || "$mode" == "advanced" ]]; then
         mkdir -p "${HOME}/.claude/history"
         mkdir -p "${HOME}/.claude/summaries"
     fi
@@ -299,9 +314,16 @@ print_usage() {
     echo "   - 프로젝트별: <프로젝트루트>/CLAUDE.md"
     echo
     
-    if [[ "$mode" == "history" || "$mode" == "advanced" ]]; then
+    if [[ "$mode" == "history" || "$mode" == "auto" || "$mode" == "advanced" ]]; then
         echo "2. 대화 기록 관리:"
         echo "   $INSTALL_DIR/src/monitor/claude_history_manager.sh --help"
+        echo
+    fi
+    
+    if [[ "$mode" == "auto" ]]; then
+        echo "3. 자동 요약 기능 (Claude CLI 사용)"
+        echo "   현재 Claude Code 세션에서는 작동하지 않습니다."
+        echo "   별도의 Claude CLI 설치가 필요합니다."
         echo
     fi
     
