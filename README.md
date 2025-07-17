@@ -22,7 +22,7 @@ curl -sSL https://raw.githubusercontent.com/physics91/claude-context/main/instal
 
 #### Windows (PowerShell)
 
-**보안 권장 방법 (2단계):**
+**권장 방법 (2단계 - 안전함):**
 ```powershell
 # 1. 스크립트 다운로드
 Invoke-WebRequest -Uri "https://raw.githubusercontent.com/physics91/claude-context/main/install/one-line-install.ps1" -OutFile "one-line-install.ps1"
@@ -32,9 +32,8 @@ Get-Content .\one-line-install.ps1 | Select-Object -First 20  # 처음 20줄 확
 PowerShell -ExecutionPolicy Bypass -File .\one-line-install.ps1
 ```
 
-**빠른 설치 (주의):**
+**빠른 설치 (신뢰할 수 있는 네트워크에서만):**
 ```powershell
-# 신뢰할 수 있는 네트워크에서만 사용
 Invoke-Expression (Invoke-WebRequest -Uri "https://raw.githubusercontent.com/physics91/claude-context/main/install/one-line-install.ps1").Content
 ```
 
