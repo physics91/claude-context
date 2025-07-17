@@ -87,7 +87,10 @@ function Remove-ClaudeHooks {
         # Remove hooks property - safe processing
         if ($config.PSObject.Properties['hooks']) {
             $config.PSObject.Properties.Remove('hooks')
-            $config | ConvertTo-Json -Depth 10 | Set-Content $claudeConfig -Encoding UTF8
+            # Convert to JSON with proper formatting and no BOM
+            $jsonContent = $config | ConvertTo-Json -Depth 10
+            # Remove BOM and save with UTF8 without BOM
+            [System.IO.File]::WriteAllText($claudeConfig, $jsonContent, [System.Text.UTF8Encoding]::new($false))
             Write-ColoredOutput "Hooks removal from Claude settings completed" "Green"
         } else {
             Write-ColoredOutput "Hooks settings are already removed." "Yellow"

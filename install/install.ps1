@@ -303,7 +303,10 @@ function Update-ClaudeConfig {
             )
         } -Force
         
-        $config | ConvertTo-Json -Depth 10 | Set-Content $claudeConfig -Encoding UTF8
+        # Convert to JSON with proper formatting and no BOM
+        $jsonContent = $config | ConvertTo-Json -Depth 10
+        # Remove BOM and save with UTF8 without BOM
+        [System.IO.File]::WriteAllText($claudeConfig, $jsonContent, [System.Text.UTF8Encoding]::new($false))
         Write-ColoredOutput "Claude configuration updated" "Green"
     }
     catch {
