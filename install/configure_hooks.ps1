@@ -4,7 +4,11 @@
 param(
     [Parameter(Mandatory=$false)]
     [ValidateSet("basic", "history", "oauth", "auto", "advanced")]
-    [string]$Mode = $null
+    [string]$Mode = $null,
+    
+    [Parameter(Mandatory=$false)]
+    [ValidateSet("PreToolUse", "UserPromptSubmit")]
+    [string]$HookType = $null
 )
 
 # Stop on errors
@@ -218,6 +222,62 @@ function Show-Usage {
     Write-Host "  $INSTALL_DIR\README.md"
 }
 
+# Hook type selection
+function Select-HookType {
+    if ($HookType) {
+        return $HookType
+    }
+    
+    Write-ColoredOutput "Select hook type:" "Blue"
+    Write-Host ""
+    Write-Host "1) PreToolUse      - Inject context before tool usage (default)"
+    Write-Host "2) UserPromptSubmit - Inject context on every user prompt"
+    Write-Host ""
+    
+    do {
+        $choice = Read-Host "Choose [1-2] (default: 1)"
+        if ([string]::IsNullOrEmpty($choice)) {
+            $choice = "1"
+        }
+    } while ($choice -notmatch "^[1-2]$")
+    
+    switch ($choice) {
+        "1" { return "PreToolUse" }
+        "2" { return "UserPromptSubmit" }
+        default { return "PreToolUse" }
+    }
+}
+
+# Update hooks in Claude settings
+function Update-Hooks {
+    param([string]$UseHookType)
+    
+    $claudeConfig = Join-Path $env:USERPROFILE ".claude\settings.json"
+    
+    if (-not (Test-Path $claudeConfig)) {
+        Write-ColoredOutput "Claude settings file not found." "Yellow"
+        return
+    }
+    
+    Write-Host "Updating hooks to use $UseHookType..."
+    
+    # Run install script with hook type parameter
+    $installScript = Join-Path $SCRIPT_DIR "install.ps1"
+    & powershell -ExecutionPolicy Bypass -File $installScript -HookType $UseHookType -Mode (Get-CurrentMode)
+}
+
+# Get current mode from config
+function Get-CurrentMode {
+    $configFile = Join-Path $INSTALL_BASE "claude-context.conf"
+    if (Test-Path $configFile) {
+        $content = Get-Content $configFile | Where-Object { $_ -match 'CLAUDE_CONTEXT_MODE="(.+)"' }
+        if ($Matches) {
+            return $Matches[1]
+        }
+    }
+    return "basic"
+}
+
 # Main execution
 function Main {
     Print-Header
@@ -234,15 +294,29 @@ function Main {
         exit 1
     }
     
-    # Select mode
-    $selectedMode = Select-Mode
+    # If only changing hook type
+    if ($HookType -and -not $Mode) {
+        Update-Hooks $HookType
+        Write-ColoredOutput "Hook type updated to: $HookType" "Green"
+        return
+    }
+    
+    # Select mode if needed
+    $selectedMode = if ($Mode) { $Mode } else { Select-Mode }
     Write-Host ""
     Write-ColoredOutput "Selected mode: $selectedMode" "Blue"
+    Write-Host ""
+    
+    # Select hook type
+    $selectedHookType = Select-HookType
+    Write-Host ""
+    Write-ColoredOutput "Selected hook type: $selectedHookType" "Blue"
     Write-Host ""
     
     # Update configuration
     Update-Config $selectedMode
     New-Directories $selectedMode
+    Update-Hooks $selectedHookType
     
     # Show completion message
     Show-Usage $selectedMode

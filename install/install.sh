@@ -11,6 +11,37 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
+# 기본값
+MODE=""
+HOOK_TYPE="PreToolUse"
+
+# 옵션 처리
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --mode)
+            MODE="$2"
+            shift 2
+            ;;
+        --hook-type)
+            HOOK_TYPE="$2"
+            shift 2
+            ;;
+        --help)
+            echo "사용법: $0 [옵션]"
+            echo "옵션:"
+            echo "  --mode <mode>        설치 모드 (basic|history|oauth|auto|advanced)"
+            echo "  --hook-type <type>   Hook 타입 (PreToolUse|UserPromptSubmit)"
+            echo "  --help               도움말 표시"
+            exit 0
+            ;;
+        *)
+            echo "알 수 없는 옵션: $1"
+            echo "도움말: $0 --help"
+            exit 1
+            ;;
+    esac
+done
+
 # 설정
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
@@ -28,6 +59,12 @@ print_header() {
 
 # 모드 선택
 select_mode() {
+    # MODE가 이미 설정된 경우 그대로 사용
+    if [[ -n "$MODE" ]]; then
+        echo "$MODE"
+        return
+    fi
+    
     echo -e "${BLUE}설치 모드를 선택하세요:${NC}" >&2
     echo >&2
     echo "1) Basic    - CLAUDE.md 주입만 (가장 간단)" >&2
@@ -179,6 +216,12 @@ install_files() {
 exec "${HOME}/.claude/hooks/claude-context/src/core/injector.sh" "$@"
 EOF
     
+    cat > "$INSTALL_BASE/claude_user_prompt_injector.sh" << 'EOF'
+#!/usr/bin/env bash
+# Claude Context User Prompt Injector Wrapper
+exec "${HOME}/.claude/hooks/claude-context/src/core/user_prompt_injector.sh" "$@"
+EOF
+    
     cat > "$INSTALL_BASE/claude_context_precompact.sh" << 'EOF'
 #!/usr/bin/env bash
 # Claude Context PreCompact Wrapper
@@ -259,28 +302,30 @@ update_claude_config() {
         return
     fi
     
-    echo "Claude 설정을 업데이트하는 중..."
+    echo "Claude 설정을 업데이트하는 중 (Hook: $HOOK_TYPE)..."
     
     # 백업 생성
     cp "$claude_config" "${claude_config}.backup.$(date +%Y%m%d_%H%M%S)"
     
     # hooks 설정 업데이트 (wrapper 스크립트 사용)
     local temp_config=$(mktemp)
-    jq '.hooks = {
-        "PreToolUse": [
-            {
-                "matcher": "",
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": "'"${INSTALL_BASE}/claude_context_injector.sh"'",
-                        "timeout": 30000
-                    }
-                ]
-            }
-        ],
-        "PreCompact": [
-            {
+    
+    if [[ "$HOOK_TYPE" == "UserPromptSubmit" ]]; then
+        jq '.hooks = {
+            "UserPromptSubmit": [
+                {
+                    "matcher": "",
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": "'"${INSTALL_BASE}/claude_user_prompt_injector.sh"'",
+                            "timeout": 5000
+                        }
+                    ]
+                }
+            ],
+            "PreCompact": [
+                {
                 "matcher": "",
                 "hooks": [
                     {
@@ -290,8 +335,38 @@ update_claude_config() {
                     }
                 ]
             }
-        ]
-    }' "$claude_config" > "$temp_config"
+                }
+            ]
+        }' "$claude_config" > "$temp_config"
+    else
+        # 기본값: PreToolUse
+        jq '.hooks = {
+            "PreToolUse": [
+                {
+                    "matcher": "",
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": "'"${INSTALL_BASE}/claude_context_injector.sh"'",
+                            "timeout": 30000
+                        }
+                    ]
+                }
+            ],
+            "PreCompact": [
+                {
+                    "matcher": "",
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": "'"${INSTALL_BASE}/claude_context_precompact.sh"'",
+                            "timeout": 1000
+                        }
+                    ]
+                }
+            ]
+        }' "$claude_config" > "$temp_config"
+    fi
     
     mv "$temp_config" "$claude_config"
     
@@ -328,6 +403,7 @@ print_usage() {
     echo
     echo -e "${BLUE}설치 위치: $INSTALL_DIR${NC}"
     echo -e "${BLUE}설치된 모드: $(echo "$mode" | tr '[:lower:]' '[:upper:]')${NC}"
+    echo -e "${BLUE}Hook 타입: $HOOK_TYPE${NC}"
     echo
     echo -e "${YELLOW}⚠️  주의: PreCompact hook은 Claude Code v1.0.48+ 에서만 작동합니다.${NC}"
     echo -e "${YELLOW}   낮은 버전에서는 PreToolUse hook만 사용됩니다.${NC}"

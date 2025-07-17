@@ -7,6 +7,10 @@ param(
     [string]$Mode = $null,
     
     [Parameter(Mandatory=$false)]
+    [ValidateSet("PreToolUse", "UserPromptSubmit")]
+    [string]$HookType = "PreToolUse",
+    
+    [Parameter(Mandatory=$false)]
     [switch]$Uninstall = $false
 )
 
@@ -170,6 +174,7 @@ function Install-Files {
     
     # Create Windows wrapper scripts
     $injectorWrapperPath = Join-Path $INSTALL_BASE "claude_context_injector.ps1"
+    $userPromptWrapperPath = Join-Path $INSTALL_BASE "claude_user_prompt_injector.ps1"
     $precompactWrapperPath = Join-Path $INSTALL_BASE "claude_context_precompact.ps1"
     
     # injector wrapper
@@ -177,7 +182,8 @@ function Install-Files {
 # Claude Context Injector Wrapper for Windows
 try {
     `$bashExe = Get-Command bash -ErrorAction Stop
-    `$scriptPath = "`$env:USERPROFILE/.claude/hooks/claude-context/src/core/injector.sh"
+    `$scriptPath = "`$env:USERPROFILE/.claude/hooks/claude-context/src/core/injector.sh" -replace '\\', '/'
+    # Git Bash on Windows uses standard paths, not WSL paths
     & bash -c "`$scriptPath `$args"
 } catch {
     Write-Error "bash not found. Please install Git for Windows."
@@ -190,7 +196,22 @@ try {
 # Claude Context PreCompact Wrapper for Windows
 try {
     `$bashExe = Get-Command bash -ErrorAction Stop
-    `$scriptPath = "`$env:USERPROFILE/.claude/hooks/claude-context/src/core/precompact.sh"
+    `$scriptPath = "`$env:USERPROFILE/.claude/hooks/claude-context/src/core/precompact.sh" -replace '\\', '/'
+    # Git Bash on Windows uses standard paths, not WSL paths
+    & bash -c "`$scriptPath `$args"
+} catch {
+    Write-Error "bash not found. Please install Git for Windows."
+    exit 1
+}
+"@
+    
+    # user prompt wrapper
+    $userPromptContent = @"
+# Claude Context User Prompt Injector Wrapper for Windows
+try {
+    `$bashExe = Get-Command bash -ErrorAction Stop
+    `$scriptPath = "`$env:USERPROFILE/.claude/hooks/claude-context/src/core/user_prompt_injector.sh" -replace '\\', '/'
+    # Git Bash on Windows uses standard paths, not WSL paths
     & bash -c "`$scriptPath `$args"
 } catch {
     Write-Error "bash not found. Please install Git for Windows."
@@ -199,6 +220,7 @@ try {
 "@
     
     Set-Content -Path $injectorWrapperPath -Value $injectorContent -Encoding UTF8
+    Set-Content -Path $userPromptWrapperPath -Value $userPromptContent -Encoding UTF8
     Set-Content -Path $precompactWrapperPath -Value $precompactContent -Encoding UTF8
     
     Write-ColoredOutput "File installation completed" "Green"
@@ -255,6 +277,8 @@ export CLAUDE_CACHE_MAX_AGE
 
 # Update Claude configuration
 function Update-ClaudeConfig {
+    param([string]$UseHookType)
+    
     $claudeConfig = Join-Path $env:USERPROFILE ".claude\settings.json"
     
     if (-not (Test-Path $claudeConfig)) {
@@ -263,7 +287,7 @@ function Update-ClaudeConfig {
         return
     }
     
-    Write-Host "Updating Claude configuration..."
+    Write-Host "Updating Claude configuration (Hook: $UseHookType)..."
     
     # Create backup
     $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
@@ -274,21 +298,11 @@ function Update-ClaudeConfig {
         $config = Get-Content $claudeConfig | ConvertFrom-Json
         
         $injectorPath = Join-Path $INSTALL_BASE "claude_context_injector.ps1"
+        $userPromptPath = Join-Path $INSTALL_BASE "claude_user_prompt_injector.ps1"
         $precompactPath = Join-Path $INSTALL_BASE "claude_context_precompact.ps1"
         
-        $config | Add-Member -NotePropertyName "hooks" -NotePropertyValue @{
-            PreToolUse = @(
-                @{
-                    matcher = ""
-                    hooks = @(
-                        @{
-                            type = "command"
-                            command = "powershell -ExecutionPolicy Bypass -File `"$injectorPath`""
-                            timeout = 30000
-                        }
-                    )
-                }
-            )
+        # Create hooks based on HookType
+        $hooksConfig = @{
             PreCompact = @(
                 @{
                     matcher = ""
@@ -301,7 +315,38 @@ function Update-ClaudeConfig {
                     )
                 }
             )
-        } -Force
+        }
+        
+        if ($UseHookType -eq "UserPromptSubmit") {
+            $hooksConfig["UserPromptSubmit"] = @(
+                @{
+                    matcher = ""
+                    hooks = @(
+                        @{
+                            type = "command"
+                            command = "powershell -ExecutionPolicy Bypass -File `"$userPromptPath`""
+                            timeout = 5000
+                        }
+                    )
+                }
+            )
+        } else {
+            # Default to PreToolUse
+            $hooksConfig["PreToolUse"] = @(
+                @{
+                    matcher = ""
+                    hooks = @(
+                        @{
+                            type = "command"
+                            command = "powershell -ExecutionPolicy Bypass -File `"$injectorPath`""
+                            timeout = 30000
+                        }
+                    )
+                }
+            )
+        }
+        
+        $config | Add-Member -NotePropertyName "hooks" -NotePropertyValue $hooksConfig -Force
         
         # Convert to JSON with proper formatting and no BOM
         $jsonContent = $config | ConvertTo-Json -Depth 10
@@ -338,6 +383,7 @@ function Show-Usage {
     Write-Host ""
     Write-ColoredOutput "Installation location: $INSTALL_DIR" "Blue"
     Write-ColoredOutput "Mode: $($SelectedMode.ToUpper())" "Blue"
+    Write-ColoredOutput "Hook Type: $HookType" "Blue"
     Write-Host ""
     Write-Host "Next steps:"
     Write-Host "1. Create CLAUDE.md files:"
@@ -373,7 +419,7 @@ function Main {
     Install-Files
     New-Config $selectedMode
     New-Directories $selectedMode
-    Update-ClaudeConfig
+    Update-ClaudeConfig -UseHookType $HookType
     
     # Show completion message
     Show-Usage $selectedMode

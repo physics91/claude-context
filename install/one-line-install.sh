@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Claude Context 원클릭 설치 스크립트
 # 사용법: curl -sSL https://raw.githubusercontent.com/physics91/claude-context/main/install/one-line-install.sh | bash
+# 
+# 환경 변수로 옵션 설정 가능:
+# CLAUDE_CONTEXT_MODE=history CLAUDE_CONTEXT_HOOK_TYPE=UserPromptSubmit curl -sSL ... | bash
 
 set -euo pipefail
 
@@ -8,6 +11,10 @@ set -euo pipefail
 GITHUB_USER="physics91"
 GITHUB_REPO="claude-context"
 GITHUB_BRANCH="main"
+
+# 기본값
+MODE="${CLAUDE_CONTEXT_MODE:-oauth}"
+HOOK_TYPE="${CLAUDE_CONTEXT_HOOK_TYPE:-PreToolUse}"
 
 # 색상 정의
 GREEN='\033[0;32m'
@@ -62,11 +69,11 @@ cd "$GITHUB_REPO"
 if [[ -f install.sh ]]; then
     chmod +x install.sh
     echo
-    ./install.sh
+    ./install.sh --mode "$MODE" --hook-type "$HOOK_TYPE"
 elif [[ -f install/install.sh ]]; then
     chmod +x install/install.sh
     echo
-    ./install/install.sh
+    ./install/install.sh --mode "$MODE" --hook-type "$HOOK_TYPE"
 else
     echo -e "${RED}Error: 설치 스크립트를 찾을 수 없습니다.${NC}"
     exit 1

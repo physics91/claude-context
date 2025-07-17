@@ -10,6 +10,37 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
+# 기본값
+MODE=""
+HOOK_TYPE=""
+
+# 옵션 처리
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --mode)
+            MODE="$2"
+            shift 2
+            ;;
+        --hook-type)
+            HOOK_TYPE="$2"
+            shift 2
+            ;;
+        --help)
+            echo "사용법: $0 [옵션]"
+            echo "옵션:"
+            echo "  --mode <mode>        설정 모드 (basic|history|oauth|auto|advanced)"
+            echo "  --hook-type <type>   Hook 타입 (PreToolUse|UserPromptSubmit)"
+            echo "  --help               도움말 표시"
+            exit 0
+            ;;
+        *)
+            echo "알 수 없는 옵션: $1"
+            echo "도움말: $0 --help"
+            exit 1
+            ;;
+    esac
+done
+
 # 설정
 INSTALL_BASE="${HOME}/.claude/hooks"
 INSTALL_DIR="${INSTALL_BASE}/claude-context"
@@ -112,3 +143,20 @@ esac
 
 echo
 echo -e "${GREEN}Claude Code를 재시작하면 변경사항이 적용됩니다.${NC}"
+
+# Hook 타입 변경이 필요한 경우
+if [[ -n "$HOOK_TYPE" ]]; then
+    echo
+    echo -e "${BLUE}Hook 타입을 변경하는 중...${NC}"
+    
+    # install.sh 스크립트 실행하여 hook 타입만 변경
+    if [[ -f "$INSTALL_DIR/install.sh" ]]; then
+        "$INSTALL_DIR/install.sh" --mode "$MODE" --hook-type "$HOOK_TYPE"
+    else
+        # 또는 현재 디렉토리의 install.sh 사용
+        SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        "$SCRIPT_DIR/install.sh" --mode "$MODE" --hook-type "$HOOK_TYPE"
+    fi
+    
+    echo -e "${GREEN}✓ Hook 타입이 $HOOK_TYPE(으)로 변경되었습니다!${NC}"
+fi

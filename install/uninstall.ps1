@@ -51,6 +51,10 @@ function Confirm-Uninstall {
         Write-Host "  - Injector script: $(Join-Path $INSTALL_BASE 'claude_context_injector.ps1')"
     }
     
+    if (Test-Path (Join-Path $INSTALL_BASE "claude_user_prompt_injector.ps1")) {
+        Write-Host "  - User Prompt Injector script: $(Join-Path $INSTALL_BASE 'claude_user_prompt_injector.ps1')"
+    }
+    
     if (Test-Path (Join-Path $INSTALL_BASE "claude_context_precompact.ps1")) {
         Write-Host "  - PreCompact script: $(Join-Path $INSTALL_BASE 'claude_context_precompact.ps1')"
     }
@@ -133,6 +137,7 @@ function Remove-Files {
     # Remove wrapper scripts
     $wrapperScripts = @(
         (Join-Path $INSTALL_BASE "claude_context_injector.ps1"),
+        (Join-Path $INSTALL_BASE "claude_user_prompt_injector.ps1"),
         (Join-Path $INSTALL_BASE "claude_context_precompact.ps1")
     )
     
@@ -166,6 +171,10 @@ function Test-Cleanup {
     
     if (Test-Path (Join-Path $INSTALL_BASE "claude_context_injector.ps1")) {
         $remaining += "Injector script"
+    }
+    
+    if (Test-Path (Join-Path $INSTALL_BASE "claude_user_prompt_injector.ps1")) {
+        $remaining += "User Prompt Injector script"
     }
     
     if (Test-Path (Join-Path $INSTALL_BASE "claude_context_precompact.ps1")) {

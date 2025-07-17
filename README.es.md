@@ -2,21 +2,35 @@
 
 <div align="center">
 
-[English](./README.en.md) | [中文](./README.zh.md) | [日本語](./README.ja.md) | **Español** | [Français](./README.fr.md) | [Deutsch](./README.de.md) | [한국어](./README.md)
+[English](./README_en.md) | [中文](./README_zh.md) | [日本語](./README_ja.md) | **Español** | [한국어](./README.md)
 
 </div>
 
 > 🤖 Una herramienta de automatización que asegura que Claude Code siempre recuerde el contexto de tu proyecto
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Coverage: 100%](https://img.shields.io/badge/Coverage-100%25-brightgreen.svg)](./tests)
 
-## 🚀 Inicio Rápido
+## 📋 Requisitos
+
+- **Claude Code v1.0.48+** (Soporte de PreCompact hook)
+- **Requisitos por SO:**
+  - Linux/macOS: Bash, `jq`, `sha256sum`, `gzip`
+  - Windows: PowerShell 5.0+, Git para Windows
+
+## 🚀 Instalación
 
 ### Instalación con un Clic
 
+**Linux/macOS:**
 ```bash
 curl -sSL https://raw.githubusercontent.com/physics91/claude-context/main/install/one-line-install.sh | bash
+```
+
+**Windows (PowerShell):**
+```powershell
+# Recomendado: Descargar script y luego ejecutar
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/physics91/claude-context/main/install/one-line-install.ps1" -OutFile "install.ps1"
+PowerShell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
 ### Instalación Manual
@@ -24,174 +38,91 @@ curl -sSL https://raw.githubusercontent.com/physics91/claude-context/main/instal
 ```bash
 git clone https://github.com/physics91/claude-context.git
 cd claude-context
-./install/install.sh
+./install/install.sh  # Linux/macOS
+.\install\install.ps1  # Windows
 ```
 
-## 🎯 Características Principales
-
-### Características Principales
-- ✅ **Inyección Automática de Contexto**: Carga automática de CLAUDE.md cuando Claude usa herramientas
-- ✅ **Protección de Compresión de Conversación**: Mantiene el contexto en conversaciones largas (PreCompact hook, v1.0.48+)
-- ✅ **Configuración Global/Específica del Proyecto**: Gestión flexible del contexto
-- ✅ **Caché Inteligente**: Rendimiento rápido (~10ms)
-
-### Características Avanzadas (Opcional)
-- 🆕 **Gestión del Historial de Conversaciones**: Funciona independientemente sin Gemini
-- 🆕 **Seguimiento Automático de Conversaciones**: Guardar y buscar automáticamente todas las conversaciones
-- 🆕 **Monitoreo de Eficiencia de Tokens**: Resúmenes inteligentes con integración de Gemini
-
-## 📋 Requisitos
-
-- **Claude Code v1.0.48+** (El soporte de PreCompact hook comienza desde v1.0.48)
-  - v1.0.41 ~ v1.0.47: Solo se admite PreToolUse hook (las funciones básicas funcionan)
-- Bash shell
-- Herramientas Unix básicas: `jq`, `sha256sum`, `gzip`
-- (Opcional) `gemini` CLI - Para funciones de monitoreo de tokens
-
-## 📖 Uso
+## 🔧 Configuración
 
 ### 1. Crear Archivos CLAUDE.md
 
 **Configuración Global** (`~/.claude/CLAUDE.md`):
 ```markdown
 # Reglas para todos los proyectos
-- Siempre escribir pruebas primero
-- Usar código claro y conciso
+- Escribir código claro y conciso
+- Siempre incluir pruebas
 ```
 
 **Configuración Específica del Proyecto** (`raíz_del_proyecto/CLAUDE.md`):
 ```markdown
 # Reglas específicas del proyecto
 - Usar TypeScript
-- Escribir código compatible con React 18
+- Estándares de React 18
 ```
 
-### 2. Configurar Modo
+### 2. Reiniciar Claude Code
 
+La configuración se aplica automáticamente después del reinicio.
+
+## 💡 Cómo Funciona
+
+### Sistema de Hooks
+Aprovecha el sistema de Hooks de Claude Code para inyectar automáticamente el contexto:
+
+1. **Hook PreToolUse/UserPromptSubmit**: Inyecta CLAUDE.md cuando Claude usa herramientas o recibe prompts
+2. **Hook PreCompact**: Protege el contexto cuando las conversaciones se comprimen
+3. **Caché Inteligente**: Usa caché para archivos iguales optimizando el rendimiento (~10ms)
+
+### Prioridad
+1. CLAUDE.md específico del proyecto (directorio de trabajo actual)
+2. CLAUDE.md global (~/.claude/)
+3. Ambos archivos se fusionan automáticamente si existen
+
+## 🎯 Funciones Avanzadas
+
+### Selección de Modo
 ```bash
-# Configuración interactiva (recomendada)
+# Linux/macOS
 ~/.claude/hooks/install/configure_hooks.sh
 
-# Selección de modo:
-# 1) Basic   - Solo inyección de CLAUDE.md
-# 2) History - Gestión del historial de conversaciones (no requiere Gemini)
-# 3) Advanced - Monitoreo de tokens (requiere Gemini)
+# Windows
+PowerShell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.claude\hooks\install\configure_hooks.ps1"
 ```
 
-### 3. Reiniciar Claude Code
+**Modos Disponibles:**
+- **Basic**: Solo inyección de CLAUDE.md (predeterminado)
+- **History**: Registro automático de conversaciones
+- **OAuth**: Resumen automático usando autenticación de Claude Code ⭐
+- **Advanced**: Monitoreo de tokens con Gemini CLI
 
-Los cambios se aplican después de reiniciar Claude Code.
-
-## 🔧 Configuración Avanzada
-
-### Gestión del Historial de Conversaciones (No Requiere Gemini)
-
-Rastrea y gestiona automáticamente todas las conversaciones:
-
+### Selección de Tipo de Hook
 ```bash
-# Gestor del historial de conversaciones
-MANAGER=~/.claude/hooks/src/monitor/claude_history_manager.sh
-
-# Listar sesiones
-$MANAGER list
-
-# Buscar conversaciones
-$MANAGER search "palabra clave"
-
-# Exportar sesión (markdown/json/txt)
-$MANAGER export <session_id> markdown output.md
-```
-
-### Habilitar Monitoreo de Tokens (Requiere Gemini)
-
-Para resúmenes más inteligentes:
-
-1. Instalar `gemini` CLI
-2. Seleccionar configuración avanzada:
-   ```bash
-   ~/.claude/hooks/install/update_hooks_config_enhanced.sh
-   ```
-
-### Variables de Entorno
-
-```bash
-# Ajustar probabilidad de inyección (0.0 ~ 1.0)
-export CLAUDE_MD_INJECT_PROBABILITY=0.5
-
-# Cambiar directorio de caché
-export XDG_CACHE_HOME=/custom/cache/path
-```
-
-## 🗂️ Estructura del Proyecto
-
-```
-claude-context/
-├── src/
-│   ├── core/
-│   │   ├── injector.sh      # Inyector unificado (soporta todos los modos)
-│   │   └── precompact.sh    # Hook precompact unificado
-│   ├── monitor/
-│   │   ├── claude_history_manager.sh     # Gestor del historial de conversaciones
-│   │   └── claude_token_monitor_safe.sh  # Monitor de tokens
-│   └── utils/
-│       └── common_functions.sh  # Biblioteca de funciones comunes
-├── install/
-│   ├── install.sh           # Script de instalación
-│   ├── configure_hooks.sh   # Script de configuración de modo
-│   └── one-line-install.sh  # Instalación con un clic
-├── tests/                   # Suite de pruebas
-├── docs/                    # Documentación detallada
-├── config.sh.template       # Plantilla de configuración
-└── MIGRATION_GUIDE.md       # Guía de migración
-```
-
-## 🧪 Pruebas
-
-```bash
-# Ejecutar todas las pruebas
-./tests/test_all.sh
-
-# Probar componentes individuales
-./tests/test_claude_md_hook.sh
-./tests/test_token_monitor.sh
+# Especificar tipo de hook durante la instalación
+./install/install.sh --hook-type UserPromptSubmit  # o PreToolUse
 ```
 
 ## 🗑️ Desinstalación
 
 ```bash
-~/.claude/hooks/install/install.sh --uninstall
+# Linux/macOS
+~/.claude/hooks/claude-context/uninstall.sh
+
+# Windows
+PowerShell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.claude\hooks\claude-context\uninstall.ps1"
 ```
-
-## 🤝 Contribuir
-
-1. Hacer fork del repositorio
-2. Crear tu rama de características (`git checkout -b feature/amazing`)
-3. Hacer commit de tus cambios (`git commit -m 'Add amazing feature'`)
-4. Hacer push a la rama (`git push origin feature/amazing`)
-5. Abrir un Pull Request
-
-## 📊 Rendimiento
-
-- Primera ejecución: ~100ms
-- Hit de caché: ~10ms
-- Uso de memoria: < 10MB
 
 ## 🔍 Solución de Problemas
 
 ### Cuando Claude no reconoce CLAUDE.md
 1. Reiniciar Claude Code
-2. Verificar configuración: `cat ~/.claude/settings.json | jq .hooks`
-3. Verificar logs: `tail -f /tmp/claude_*.log`
+2. Verificar configuración: sección hooks de `~/.claude/settings.json`
+3. Verificar logs: `/tmp/claude_*.log` (Linux/macOS) o `%TEMP%\claude_*.log` (Windows)
 
-### Cuando el monitoreo de tokens no funciona
-1. Verificar instalación de `gemini`
-2. Verificar historial de conversaciones: `ls ~/.claude/history/`
-3. Verificar permisos: `ls -la ~/.claude/`
+### Más Documentación
+- [Guía de Instalación](./docs/installation.md)
+- [Configuración Avanzada](./docs/advanced.md)
+- [Solución de Problemas](./docs/troubleshooting.md)
 
 ## 📝 Licencia
 
-Licencia MIT - ¡Úsalo libremente!
-
-## 🙏 Agradecimientos
-
-Este proyecto fue creado a través de la colaboración entre Claude y Gemini.
+Licencia MIT
