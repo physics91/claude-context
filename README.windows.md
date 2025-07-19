@@ -75,7 +75,7 @@ Add-Content -Path ".\CLAUDE.md" -Value "- React 18 기준 코드 작성"
 
 ```powershell
 # 대화형 모드 설정
-PowerShell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.claude\hooks\install\configure_hooks.ps1"
+PowerShell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.claude\hooks\claude-context\install\configure_hooks.ps1"
 ```
 
 **사용 가능한 모드:**
@@ -93,13 +93,29 @@ PowerShell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.claude\hooks\install
 
 ### 환경 변수 설정
 
-**PowerShell 프로필에 추가:** (`$PROFILE`)
+**자동 설정 (권장):**
+설치 시 생성된 PowerShell 설정 파일을 사용:
 ```powershell
-# 주입 확률 조정 (0.0 ~ 1.0)
-$env:CLAUDE_MD_INJECT_PROBABILITY = "0.8"
+# PowerShell 프로필에 추가 ($PROFILE)
+. "$env:USERPROFILE\.claude\hooks\claude-context\config.ps1"
+```
 
-# 캐시 디렉토리 사용자 정의
-$env:LOCALAPPDATA = "D:\CustomCache"
+**수동 설정:**
+```powershell
+# 기본 Claude Context 환경 변수
+$env:CLAUDE_CONTEXT_MODE = "history"  # basic, history, oauth, auto, advanced
+$env:CLAUDE_ENABLE_CACHE = "true"
+$env:CLAUDE_INJECT_PROBABILITY = "1.0"
+
+# 디렉토리 설정
+$env:CLAUDE_HOME = "$env:USERPROFILE\.claude"
+$env:CLAUDE_HISTORY_DIR = "$env:USERPROFILE\.claude\history"
+$env:CLAUDE_SUMMARY_DIR = "$env:USERPROFILE\.claude\summaries"
+$env:CLAUDE_CACHE_DIR = "$env:LOCALAPPDATA\claude-context"
+
+# 고급 설정
+$env:CLAUDE_MD_INJECT_PROBABILITY = "0.8"  # 주입 확률 조정 (0.0 ~ 1.0)
+$env:CLAUDE_DEBUG = "true"                 # 디버그 모드 활성화
 ```
 
 ### 대화 기록 관리 (Git Bash)
@@ -188,10 +204,10 @@ Get-Content (Get-ChildItem "$env:TEMP" -Filter "claude_*.log" | Sort-Object Last
 
 ```powershell
 # 제거 스크립트 실행
-PowerShell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.claude\hooks\install\uninstall.ps1"
+PowerShell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.claude\hooks\claude-context\install\uninstall.ps1"
 
 # 강제 제거 (확인 없이)
-PowerShell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.claude\hooks\install\uninstall.ps1" -Force
+PowerShell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.claude\hooks\claude-context\install\uninstall.ps1" -Force
 ```
 
 **수동 정리가 필요한 경우:**

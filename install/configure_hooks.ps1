@@ -24,6 +24,7 @@ function Write-ColoredOutput {
 }
 
 # Configuration - using Join-Path for safe path combination
+$SCRIPT_DIR = Split-Path -Parent $MyInvocation.MyCommand.Path
 $INSTALL_BASE = Join-Path $env:USERPROFILE ".claude\hooks"
 $INSTALL_DIR = Join-Path $INSTALL_BASE "claude-context"
 $CONFIG_FILE = Join-Path $INSTALL_BASE "claude-context.conf"

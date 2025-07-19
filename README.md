@@ -12,7 +12,7 @@
 
 ## 📋 요구사항
 
-- **Claude Code v1.0.48+** (PreCompact hook 지원)
+- **Claude Code v1.0.54+** (PreCompact hook 지원)
 - **OS별 요구사항:**
   - Linux/macOS: Bash, `jq`, `sha256sum`, `gzip`
   - Windows: PowerShell 5.0+, Git for Windows

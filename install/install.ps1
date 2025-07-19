@@ -179,12 +179,46 @@ function Install-Files {
     
     # injector wrapper
     $injectorContent = @"
-# Claude Context Injector Wrapper for Windows
+# Claude Context Injector Wrapper for Windows (Enhanced)
 try {
     `$bashExe = Get-Command bash -ErrorAction Stop
-    `$scriptPath = "`$env:USERPROFILE/.claude/hooks/claude-context/src/core/injector.sh" -replace '\\', '/'
-    # Git Bash on Windows uses standard paths, not WSL paths
-    & bash -c "`$scriptPath `$args"
+
+    # Windows 경로를 Git Bash 호환 경로로 변환
+    `$userProfile = `$env:USERPROFILE -replace '\\\\', '/' -replace '^([A-Z]):', '/`$1'
+    `$scriptPath = "`$userProfile/.claude/hooks/claude-context/src/core/injector.sh"
+
+    # 환경 변수 설정 (PowerShell -> Bash)
+    `$env:CLAUDE_HOME = "`$env:USERPROFILE\.claude"
+    `$env:HOME = `$env:USERPROFILE
+
+    # Claude Hook 환경 변수들 수집
+    `$envVars = @()
+    if (`$env:INPUT_MESSAGE) { `$envVars += "INPUT_MESSAGE='`$(`$env:INPUT_MESSAGE -replace "'", "'\''")'" }
+    if (`$env:CLAUDE_SESSION_ID) { `$envVars += "CLAUDE_SESSION_ID='`$(`$env:CLAUDE_SESSION_ID)'" }
+    if (`$env:CLAUDE_CONTEXT_MODE) { `$envVars += "CLAUDE_CONTEXT_MODE='`$(`$env:CLAUDE_CONTEXT_MODE)'" }
+    if (`$env:CLAUDE_ENABLE_CACHE) { `$envVars += "CLAUDE_ENABLE_CACHE='`$(`$env:CLAUDE_ENABLE_CACHE)'" }
+    if (`$env:CLAUDE_INJECT_PROBABILITY) { `$envVars += "CLAUDE_INJECT_PROBABILITY='`$(`$env:CLAUDE_INJECT_PROBABILITY)'" }
+
+    # 기본 환경 변수 추가
+    `$envVars += "CLAUDE_HOME='`$(`$env:USERPROFILE -replace '\\\\', '/')/.claude'"
+    `$envVars += "CLAUDE_HOOKS_DIR='`$(`$env:USERPROFILE -replace '\\\\', '/')/.claude/hooks'"
+    `$envVars += "CLAUDE_HISTORY_DIR='`$(`$env:USERPROFILE -replace '\\\\', '/')/.claude/history'"
+    `$envVars += "CLAUDE_SUMMARY_DIR='`$(`$env:USERPROFILE -replace '\\\\', '/')/.claude/summaries'"
+    `$envVars += "CLAUDE_CACHE_DIR='`$(`$env:LOCALAPPDATA -replace '\\\\', '/')/claude-context'"
+    `$envVars += "CLAUDE_LOG_DIR='`$(`$env:USERPROFILE -replace '\\\\', '/')/.claude/logs'"
+
+    `$envString = `$envVars -join ' '
+
+    # 인수 처리 (PowerShell args -> bash)
+    `$bashArgs = if (`$args) {
+        (`$args | ForEach-Object { "'`$(`$_ -replace "'", "'\''")'" }) -join ' '
+    } else {
+        ''
+    }
+
+    # bash 실행 (환경 변수와 함께)
+    `$command = "`$envString '`$scriptPath' `$bashArgs"
+    & bash -c `$command
 } catch {
     Write-Error "bash not found. Please install Git for Windows."
     exit 1
@@ -193,12 +227,46 @@ try {
     
     # precompact wrapper
     $precompactContent = @"
-# Claude Context PreCompact Wrapper for Windows
+# Claude Context PreCompact Wrapper for Windows (Enhanced)
 try {
     `$bashExe = Get-Command bash -ErrorAction Stop
-    `$scriptPath = "`$env:USERPROFILE/.claude/hooks/claude-context/src/core/precompact.sh" -replace '\\', '/'
-    # Git Bash on Windows uses standard paths, not WSL paths
-    & bash -c "`$scriptPath `$args"
+
+    # Windows 경로를 Git Bash 호환 경로로 변환
+    `$userProfile = `$env:USERPROFILE -replace '\\\\', '/' -replace '^([A-Z]):', '/`$1'
+    `$scriptPath = "`$userProfile/.claude/hooks/claude-context/src/core/precompact.sh"
+
+    # 환경 변수 설정 (PowerShell -> Bash)
+    `$env:CLAUDE_HOME = "`$env:USERPROFILE\.claude"
+    `$env:HOME = `$env:USERPROFILE
+
+    # Claude Hook 환경 변수들 수집
+    `$envVars = @()
+    if (`$env:INPUT_MESSAGE) { `$envVars += "INPUT_MESSAGE='`$(`$env:INPUT_MESSAGE -replace "'", "'\''")'" }
+    if (`$env:CLAUDE_SESSION_ID) { `$envVars += "CLAUDE_SESSION_ID='`$(`$env:CLAUDE_SESSION_ID)'" }
+    if (`$env:CLAUDE_CONTEXT_MODE) { `$envVars += "CLAUDE_CONTEXT_MODE='`$(`$env:CLAUDE_CONTEXT_MODE)'" }
+    if (`$env:CLAUDE_ENABLE_CACHE) { `$envVars += "CLAUDE_ENABLE_CACHE='`$(`$env:CLAUDE_ENABLE_CACHE)'" }
+    if (`$env:CLAUDE_INJECT_PROBABILITY) { `$envVars += "CLAUDE_INJECT_PROBABILITY='`$(`$env:CLAUDE_INJECT_PROBABILITY)'" }
+
+    # 기본 환경 변수 추가
+    `$envVars += "CLAUDE_HOME='`$(`$env:USERPROFILE -replace '\\\\', '/')/.claude'"
+    `$envVars += "CLAUDE_HOOKS_DIR='`$(`$env:USERPROFILE -replace '\\\\', '/')/.claude/hooks'"
+    `$envVars += "CLAUDE_HISTORY_DIR='`$(`$env:USERPROFILE -replace '\\\\', '/')/.claude/history'"
+    `$envVars += "CLAUDE_SUMMARY_DIR='`$(`$env:USERPROFILE -replace '\\\\', '/')/.claude/summaries'"
+    `$envVars += "CLAUDE_CACHE_DIR='`$(`$env:LOCALAPPDATA -replace '\\\\', '/')/claude-context'"
+    `$envVars += "CLAUDE_LOG_DIR='`$(`$env:USERPROFILE -replace '\\\\', '/')/.claude/logs'"
+
+    `$envString = `$envVars -join ' '
+
+    # 인수 처리 (PowerShell args -> bash)
+    `$bashArgs = if (`$args) {
+        (`$args | ForEach-Object { "'`$(`$_ -replace "'", "'\''")'" }) -join ' '
+    } else {
+        ''
+    }
+
+    # bash 실행 (환경 변수와 함께)
+    `$command = "`$envString '`$scriptPath' `$bashArgs"
+    & bash -c `$command
 } catch {
     Write-Error "bash not found. Please install Git for Windows."
     exit 1
@@ -207,12 +275,46 @@ try {
     
     # user prompt wrapper
     $userPromptContent = @"
-# Claude Context User Prompt Injector Wrapper for Windows
+# Claude Context User Prompt Injector Wrapper for Windows (Enhanced)
 try {
     `$bashExe = Get-Command bash -ErrorAction Stop
-    `$scriptPath = "`$env:USERPROFILE/.claude/hooks/claude-context/src/core/user_prompt_injector.sh" -replace '\\', '/'
-    # Git Bash on Windows uses standard paths, not WSL paths
-    & bash -c "`$scriptPath `$args"
+
+    # Windows 경로를 Git Bash 호환 경로로 변환
+    `$userProfile = `$env:USERPROFILE -replace '\\\\', '/' -replace '^([A-Z]):', '/`$1'
+    `$scriptPath = "`$userProfile/.claude/hooks/claude-context/src/core/user_prompt_injector.sh"
+
+    # 환경 변수 설정 (PowerShell -> Bash)
+    `$env:CLAUDE_HOME = "`$env:USERPROFILE\.claude"
+    `$env:HOME = `$env:USERPROFILE
+
+    # Claude Hook 환경 변수들 수집
+    `$envVars = @()
+    if (`$env:INPUT_MESSAGE) { `$envVars += "INPUT_MESSAGE='`$(`$env:INPUT_MESSAGE -replace "'", "'\''")'" }
+    if (`$env:CLAUDE_SESSION_ID) { `$envVars += "CLAUDE_SESSION_ID='`$(`$env:CLAUDE_SESSION_ID)'" }
+    if (`$env:CLAUDE_CONTEXT_MODE) { `$envVars += "CLAUDE_CONTEXT_MODE='`$(`$env:CLAUDE_CONTEXT_MODE)'" }
+    if (`$env:CLAUDE_ENABLE_CACHE) { `$envVars += "CLAUDE_ENABLE_CACHE='`$(`$env:CLAUDE_ENABLE_CACHE)'" }
+    if (`$env:CLAUDE_INJECT_PROBABILITY) { `$envVars += "CLAUDE_INJECT_PROBABILITY='`$(`$env:CLAUDE_INJECT_PROBABILITY)'" }
+
+    # 기본 환경 변수 추가
+    `$envVars += "CLAUDE_HOME='`$(`$env:USERPROFILE -replace '\\\\', '/')/.claude'"
+    `$envVars += "CLAUDE_HOOKS_DIR='`$(`$env:USERPROFILE -replace '\\\\', '/')/.claude/hooks'"
+    `$envVars += "CLAUDE_HISTORY_DIR='`$(`$env:USERPROFILE -replace '\\\\', '/')/.claude/history'"
+    `$envVars += "CLAUDE_SUMMARY_DIR='`$(`$env:USERPROFILE -replace '\\\\', '/')/.claude/summaries'"
+    `$envVars += "CLAUDE_CACHE_DIR='`$(`$env:LOCALAPPDATA -replace '\\\\', '/')/claude-context'"
+    `$envVars += "CLAUDE_LOG_DIR='`$(`$env:USERPROFILE -replace '\\\\', '/')/.claude/logs'"
+
+    `$envString = `$envVars -join ' '
+
+    # 인수 처리 (PowerShell args -> bash)
+    `$bashArgs = if (`$args) {
+        (`$args | ForEach-Object { "'`$(`$_ -replace "'", "'\''")'" }) -join ' '
+    } else {
+        ''
+    }
+
+    # bash 실행 (환경 변수와 함께)
+    `$command = "`$envString '`$scriptPath' `$bashArgs"
+    & bash -c `$command
 } catch {
     Write-Error "bash not found. Please install Git for Windows."
     exit 1
@@ -271,8 +373,39 @@ export CLAUDE_LOCK_TIMEOUT
 export CLAUDE_CACHE_MAX_AGE
 "@
     Set-Content -Path $configShPath -Value $configShContent -Encoding UTF8
-    
-    Write-ColoredOutput "Configuration files created" "Green"
+
+    # Create config.ps1 for PowerShell environment
+    $configPs1Path = Join-Path $INSTALL_DIR "config.ps1"
+    $configPs1Content = @"
+# Claude Context Configuration - PowerShell
+# 이 파일은 PowerShell 환경에서 Claude Context 환경 변수를 설정합니다.
+
+# 기본 설정
+`$env:CLAUDE_CONTEXT_MODE = "$SelectedMode"
+`$env:CLAUDE_ENABLE_CACHE = "true"
+`$env:CLAUDE_INJECT_PROBABILITY = "1.0"
+
+# 디렉토리 설정
+`$env:CLAUDE_HOME = "`$env:USERPROFILE\.claude"
+`$env:CLAUDE_HOOKS_DIR = "`$env:USERPROFILE\.claude\hooks"
+`$env:CLAUDE_HISTORY_DIR = "`$env:USERPROFILE\.claude\history"
+`$env:CLAUDE_SUMMARY_DIR = "`$env:USERPROFILE\.claude\summaries"
+`$env:CLAUDE_CACHE_DIR = "`$env:LOCALAPPDATA\claude-context"
+`$env:CLAUDE_LOG_DIR = "`$env:USERPROFILE\.claude\logs"
+
+# 고급 설정
+`$env:CLAUDE_LOCK_TIMEOUT = "5"
+`$env:CLAUDE_CACHE_MAX_AGE = "3600"
+
+# 사용자 정의 설정 (필요시 수정)
+# `$env:CLAUDE_MD_INJECT_PROBABILITY = "0.8"  # 주입 확률 조정
+# `$env:CLAUDE_DEBUG = "true"                 # 디버그 모드
+
+Write-Verbose "Claude Context PowerShell configuration loaded (Mode: $SelectedMode)"
+"@
+    Set-Content -Path $configPs1Path -Value $configPs1Content -Encoding UTF8
+
+    Write-ColoredOutput "Configuration files created (bash + PowerShell)" "Green"
 }
 
 # Update Claude configuration
