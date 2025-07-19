@@ -1,35 +1,96 @@
-# 캐시 및 로그
-*.log
-*.cache
-*.tmp
+# Test files
+test_*.ps1
+*_test.ps1
+comprehensive_test.ps1
+detailed_functional_test.ps1
+test_*.sh
+*_test.sh
+test_*.md
+test_report_*.md
+test_summary.md
 
-# 테스트 결과
+# Test directories
+tests/
 test_results/
 coverage/
 
-# 사용자 데이터
-claude_playground/
+# Summary and report files
+*_summary.ps1
+*_report.ps1
+final_*.ps1
+run_test_*.ps1
 
-# OS 파일
+# Temporary files
+*.tmp
+*.temp
+*.log
+*.cache
+*.bak
+*.backup
+*.old
+
+# OS-specific files
 .DS_Store
 Thumbs.db
+Desktop.ini
 
-# 에디터
+# Editor files
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
 
-# 백업 파일
-*.backup
-*.bak
+# Windows installation test files
+windows_installation_*.ps1
+final_installation_*.ps1
+install_test.sh
 
-# 설치 시 생성되는 디렉토리
+# Development-only files
+dev_*.ps1
+dev_*.sh
+functional_test.sh
+simple_test.sh
+
+# Local configuration
+.env
+.env.local
+
+# Build artifacts
+dist/
+build/
+*.zip
+*.tar.gz
+
+# Backup files
+*.backup.*
+backup/
+
+# User data
+claude_playground/
+
+# Installation generated files (local only)
 claude-context/
-
-# 래퍼 스크립트 (설치 시 생성됨)
 claude_context_injector.sh
 claude_context_precompact.sh
-
-# 설정 파일 (설치 시 생성됨)
 claude-context.conf
+
+# User-specific Claude files (should not be in repo)
+.claude/
+
+# Logs
+logs/
+*.log.*
+
+# Python
+__pycache__/
+*.pyc
+venv/
+env/
+.venv/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

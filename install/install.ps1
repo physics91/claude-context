@@ -120,20 +120,22 @@ function Install-Files {
     # Create claude-context directories
     $dirs = @(
         (Join-Path $INSTALL_DIR "src\core"),
-        (Join-Path $INSTALL_DIR "src\monitor"), 
         (Join-Path $INSTALL_DIR "src\utils"),
-        (Join-Path $INSTALL_DIR "tests"),
         (Join-Path $INSTALL_DIR "docs"),
-        (Join-Path $INSTALL_DIR "examples"),
         (Join-Path $INSTALL_DIR "config")
     )
+    
+    # Add monitor directory only for specific modes
+    if ($Mode -eq "history" -or $Mode -eq "oauth" -or $Mode -eq "auto" -or $Mode -eq "advanced") {
+        $dirs += (Join-Path $INSTALL_DIR "src\monitor")
+    }
     
     foreach ($dir in $dirs) {
         $null = New-Item -ItemType Directory -Path $dir -Force
     }
     
     # Check required directories
-    $requiredDirs = @("core", "monitor", "utils")
+    $requiredDirs = @("core", "utils")
     $missingCount = 0
     
     foreach ($dir in $requiredDirs) {
@@ -151,22 +153,39 @@ function Install-Files {
         exit 1
     }
     
-    # Copy files
+    # Copy core files
     Copy-Item -Recurse (Join-Path $PROJECT_ROOT "core") (Join-Path $INSTALL_DIR "src") -Force
-    Copy-Item -Recurse (Join-Path $PROJECT_ROOT "monitor") (Join-Path $INSTALL_DIR "src") -Force
     Copy-Item -Recurse (Join-Path $PROJECT_ROOT "utils") (Join-Path $INSTALL_DIR "src") -Force
     
-    # Copy optional directories
-    if (Test-Path (Join-Path $PROJECT_ROOT "tests")) {
-        Copy-Item -Recurse (Join-Path $PROJECT_ROOT "tests") $INSTALL_DIR -Force
-    }
-    if (Test-Path (Join-Path $PROJECT_ROOT "docs")) {
-        Copy-Item -Recurse (Join-Path $PROJECT_ROOT "docs") $INSTALL_DIR -Force
+    # Copy monitor directory only for specific modes
+    if ($Mode -eq "history" -or $Mode -eq "oauth" -or $Mode -eq "auto" -or $Mode -eq "advanced") {
+        if (Test-Path (Join-Path $PROJECT_ROOT "monitor")) {
+            Copy-Item -Recurse (Join-Path $PROJECT_ROOT "monitor") (Join-Path $INSTALL_DIR "src") -Force
+        }
     }
     
-    # Copy documentation files
-    if (Test-Path (Join-Path $PROJECT_ROOT "README.md")) {
-        Copy-Item (Join-Path $PROJECT_ROOT "README.md") $INSTALL_DIR -Force
+    # Copy only essential documentation
+    if (Test-Path (Join-Path $PROJECT_ROOT "docs")) {
+        $docsDir = Join-Path $INSTALL_DIR "docs"
+        $null = New-Item -ItemType Directory -Path $docsDir -Force
+        
+        # Copy only essential docs
+        $essentialDocs = @("INSTALL.md", "LICENSE", "PROJECT_CONTEXT.md")
+        foreach ($doc in $essentialDocs) {
+            $sourcePath = Join-Path $PROJECT_ROOT "docs" $doc
+            if (Test-Path $sourcePath) {
+                Copy-Item $sourcePath $docsDir -Force
+            }
+        }
+    }
+    
+    # Copy main documentation files
+    $mainDocs = @("README.md", "README.en.md", "README.windows.md")
+    foreach ($doc in $mainDocs) {
+        $sourcePath = Join-Path $PROJECT_ROOT $doc
+        if (Test-Path $sourcePath) {
+            Copy-Item $sourcePath $INSTALL_DIR -Force
+        }
     }
     if (Test-Path (Join-Path $PROJECT_ROOT "config.sh")) {
         Copy-Item (Join-Path $PROJECT_ROOT "config.sh") $INSTALL_DIR -Force

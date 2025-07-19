@@ -172,10 +172,10 @@ install_files() {
     echo "파일을 설치하는 중..."
     
     # claude-context 디렉토리 생성
-    mkdir -p "$INSTALL_DIR"/{src/{core,monitor,utils},tests,docs,examples,config}
+    mkdir -p "$INSTALL_DIR"/{src/{core,utils},docs,config}
     
     # 필수 파일들의 존재 여부 체크
-    local required_dirs=("core" "monitor" "utils")
+    local required_dirs=("core" "utils")
     local missing_count=0
     
     for dir in "${required_dirs[@]}"; do
@@ -193,18 +193,37 @@ install_files() {
         exit 1
     fi
     
-    # 파일 복사 (flat 구조에서 claude-context로)
+    # 핵심 파일 복사
     cp -r "$PROJECT_ROOT/core" "$INSTALL_DIR/src/"
-    cp -r "$PROJECT_ROOT/monitor" "$INSTALL_DIR/src/"
     cp -r "$PROJECT_ROOT/utils" "$INSTALL_DIR/src/"
     
-    # 선택적 디렉토리 복사
-    [[ -d "$PROJECT_ROOT/tests" ]] && cp -r "$PROJECT_ROOT/tests" "$INSTALL_DIR/"
-    [[ -d "$PROJECT_ROOT/docs" ]] && cp -r "$PROJECT_ROOT/docs" "$INSTALL_DIR/"
+    # monitor 디렉토리는 선택적으로 복사 (history, oauth, auto, advanced 모드에서만)
+    if [[ "$MODE" == "history" || "$MODE" == "oauth" || "$MODE" == "auto" || "$MODE" == "advanced" ]]; then
+        if [[ -d "$PROJECT_ROOT/monitor" ]]; then
+            mkdir -p "$INSTALL_DIR/src/monitor"
+            cp -r "$PROJECT_ROOT/monitor" "$INSTALL_DIR/src/"
+        fi
+    fi
     
-    # 문서 파일 복사
+    # 문서 파일 복사 (필수 문서만)
+    if [[ -d "$PROJECT_ROOT/docs" ]]; then
+        mkdir -p "$INSTALL_DIR/docs"
+        [[ -f "$PROJECT_ROOT/docs/INSTALL.md" ]] && cp "$PROJECT_ROOT/docs/INSTALL.md" "$INSTALL_DIR/docs/"
+        [[ -f "$PROJECT_ROOT/docs/LICENSE" ]] && cp "$PROJECT_ROOT/docs/LICENSE" "$INSTALL_DIR/docs/"
+        [[ -f "$PROJECT_ROOT/docs/PROJECT_CONTEXT.md" ]] && cp "$PROJECT_ROOT/docs/PROJECT_CONTEXT.md" "$INSTALL_DIR/docs/"
+    fi
+    
+    # 주요 README 파일 복사
     [[ -f "$PROJECT_ROOT/README.md" ]] && cp "$PROJECT_ROOT/README.md" "$INSTALL_DIR/"
+    [[ -f "$PROJECT_ROOT/README.en.md" ]] && cp "$PROJECT_ROOT/README.en.md" "$INSTALL_DIR/"
+    [[ -f "$PROJECT_ROOT/README.windows.md" ]] && cp "$PROJECT_ROOT/README.windows.md" "$INSTALL_DIR/"
+    
+    # 설정 파일 복사
     [[ -f "$PROJECT_ROOT/config.sh" ]] && cp "$PROJECT_ROOT/config.sh" "$INSTALL_DIR/"
+    
+    # 메인 스크립트 복사
+    [[ -f "$PROJECT_ROOT/claude_context_injector.sh" ]] && cp "$PROJECT_ROOT/claude_context_injector.sh" "$INSTALL_DIR/"
+    [[ -f "$PROJECT_ROOT/claude_context_precompact.sh" ]] && cp "$PROJECT_ROOT/claude_context_precompact.sh" "$INSTALL_DIR/"
     
     # uninstall 스크립트 복사
     [[ -f "$PROJECT_ROOT/uninstall.sh" ]] && cp "$PROJECT_ROOT/uninstall.sh" "$INSTALL_DIR/"
