@@ -8,7 +8,7 @@ param(
     
     [Parameter(Mandatory=$false)]
     [ValidateSet("PreToolUse", "UserPromptSubmit")]
-    [string]$HookType = "PreToolUse",
+    [string]$HookType = "UserPromptSubmit",
     
     [Parameter(Mandatory=$false)]
     [switch]$Uninstall = $false
@@ -480,34 +480,19 @@ function Update-ClaudeConfig {
             )
         }
         
-        if ($UseHookType -eq "UserPromptSubmit") {
-            $hooksConfig["UserPromptSubmit"] = @(
-                @{
-                    matcher = ""
-                    hooks = @(
-                        @{
-                            type = "command"
-                            command = "powershell -ExecutionPolicy Bypass -File `"$userPromptPath`""
-                            timeout = 5000
-                        }
-                    )
-                }
-            )
-        } else {
-            # Default to PreToolUse
-            $hooksConfig["PreToolUse"] = @(
-                @{
-                    matcher = ""
-                    hooks = @(
-                        @{
-                            type = "command"
-                            command = "powershell -ExecutionPolicy Bypass -File `"$injectorPath`""
-                            timeout = 30000
-                        }
-                    )
-                }
-            )
-        }
+        # Always use UserPromptSubmit hook
+        $hooksConfig["UserPromptSubmit"] = @(
+            @{
+                matcher = ""
+                hooks = @(
+                    @{
+                        type = "command"
+                        command = "powershell -ExecutionPolicy Bypass -File `"$userPromptPath`""
+                        timeout = 30000
+                    }
+                )
+            }
+        )
         
         $config | Add-Member -NotePropertyName "hooks" -NotePropertyValue $hooksConfig -Force
         

@@ -13,7 +13,7 @@ NC='\033[0m'
 
 # 기본값
 MODE=""
-HOOK_TYPE="PreToolUse"
+HOOK_TYPE="UserPromptSubmit"
 
 # 옵션 처리
 while [[ $# -gt 0 ]]; do
@@ -329,63 +329,34 @@ update_claude_config() {
     # hooks 설정 업데이트 (wrapper 스크립트 사용)
     local temp_config=$(mktemp)
     
-    if [[ "$HOOK_TYPE" == "UserPromptSubmit" ]]; then
-        jq '.hooks = {
-            "UserPromptSubmit": [
-                {
-                    "matcher": "",
-                    "hooks": [
-                        {
-                            "type": "command",
-                            "command": "'"${INSTALL_BASE}/claude_user_prompt_injector.sh"'",
-                            "timeout": 5000
-                        }
-                    ]
-                }
-            ],
-            "PreCompact": [
-                {
+    # Always use UserPromptSubmit hook
+    jq '.hooks = {
+        "UserPromptSubmit": [
+            {
                 "matcher": "",
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "'"${INSTALL_BASE}/claude_context_precompact.sh"'",
-                        "timeout": 1000
+                        "command": "'"${INSTALL_BASE}/claude_user_prompt_injector.sh"'",
+                        "timeout": 30000
                     }
                 ]
             }
+        ],
+        "PreCompact": [
+            {
+            "matcher": "",
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": "'"${INSTALL_BASE}/claude_context_precompact.sh"'",
+                    "timeout": 1000
                 }
             ]
-        }' "$claude_config" > "$temp_config"
-    else
-        # 기본값: PreToolUse
-        jq '.hooks = {
-            "PreToolUse": [
-                {
-                    "matcher": "",
-                    "hooks": [
-                        {
-                            "type": "command",
-                            "command": "'"${INSTALL_BASE}/claude_context_injector.sh"'",
-                            "timeout": 30000
-                        }
-                    ]
-                }
-            ],
-            "PreCompact": [
-                {
-                    "matcher": "",
-                    "hooks": [
-                        {
-                            "type": "command",
-                            "command": "'"${INSTALL_BASE}/claude_context_precompact.sh"'",
-                            "timeout": 1000
-                        }
-                    ]
-                }
-            ]
-        }' "$claude_config" > "$temp_config"
-    fi
+        }
+            }
+        ]
+    }' "$claude_config" > "$temp_config"
     
     mv "$temp_config" "$claude_config"
     

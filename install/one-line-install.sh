@@ -14,7 +14,7 @@ GITHUB_BRANCH="main"
 
 # 기본값
 MODE="${CLAUDE_CONTEXT_MODE:-oauth}"
-HOOK_TYPE="${CLAUDE_CONTEXT_HOOK_TYPE:-PreToolUse}"
+HOOK_TYPE="${CLAUDE_CONTEXT_HOOK_TYPE:-UserPromptSubmit}"
 
 # 색상 정의
 GREEN='\033[0;32m'

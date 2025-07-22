@@ -8,7 +8,7 @@ param(
     
     [Parameter(Mandatory=$false)]
     [ValidateSet("PreToolUse", "UserPromptSubmit")]
-    [string]$HookType = $null
+    [string]$HookType = "UserPromptSubmit"
 )
 
 # Stop on errors
@@ -224,30 +224,10 @@ function Show-Usage {
     Write-Host "  $INSTALL_DIR\README.md"
 }
 
-# Hook type selection
+# Hook type selection - Always use UserPromptSubmit
 function Select-HookType {
-    if ($HookType) {
-        return $HookType
-    }
-    
-    Write-ColoredOutput "Select hook type:" "Blue"
-    Write-Host ""
-    Write-Host "1) PreToolUse      - Inject context before tool usage (default)"
-    Write-Host "2) UserPromptSubmit - Inject context on every user prompt"
-    Write-Host ""
-    
-    do {
-        $choice = Read-Host "Choose [1-2] (default: 1)"
-        if ([string]::IsNullOrEmpty($choice)) {
-            $choice = "1"
-        }
-    } while ($choice -notmatch "^[1-2]$")
-    
-    switch ($choice) {
-        "1" { return "PreToolUse" }
-        "2" { return "UserPromptSubmit" }
-        default { return "PreToolUse" }
-    }
+    # Always return UserPromptSubmit
+    return "UserPromptSubmit"
 }
 
 # Update hooks in Claude settings
@@ -320,11 +300,8 @@ function Main {
     Write-ColoredOutput "Selected mode: $selectedMode" "Blue"
     Write-Host ""
     
-    # Select hook type
-    $selectedHookType = Select-HookType
-    Write-Host ""
-    Write-ColoredOutput "Selected hook type: $selectedHookType" "Blue"
-    Write-Host ""
+    # Always use UserPromptSubmit hook type
+    $selectedHookType = "UserPromptSubmit"
     
     # Update configuration
     Update-Config $selectedMode

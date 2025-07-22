@@ -12,7 +12,7 @@ NC='\033[0m'
 
 # 기본값
 MODE=""
-HOOK_TYPE=""
+HOOK_TYPE="UserPromptSubmit"
 
 # 옵션 처리
 while [[ $# -gt 0 ]]; do
