@@ -25,9 +25,9 @@ function Write-ColoredOutput {
 
 # Configuration - using Join-Path for safe path combination
 $SCRIPT_DIR = Split-Path -Parent $MyInvocation.MyCommand.Path
-$INSTALL_BASE = Join-Path $env:USERPROFILE ".claude\hooks"
-$INSTALL_DIR = Join-Path $INSTALL_BASE "claude-context"
-$CONFIG_FILE = Join-Path $INSTALL_BASE "claude-context.conf"
+$INSTALL_BASE = Join-Path -Path $env:USERPROFILE -ChildPath ".claude\hooks"
+$INSTALL_DIR = Join-Path -Path $INSTALL_BASE -ChildPath "claude-context"
+$CONFIG_FILE = Join-Path -Path $INSTALL_BASE -ChildPath "claude-context.conf"
 
 # Print header
 function Print-Header {
@@ -115,7 +115,7 @@ CLAUDE_CONTEXT_MODE="$SelectedMode"
     }
     
     # Update config.sh
-    $configShPath = Join-Path $INSTALL_DIR "config.sh"
+    $configShPath = Join-Path -Path $INSTALL_DIR -ChildPath "config.sh"
     if (Test-Path $configShPath) {
         $content = Get-Content $configShPath
         $newContent = $content | ForEach-Object {
@@ -136,14 +136,14 @@ function New-Directories {
     param([string]$SelectedMode)
     
     # Basic directories
-    $null = New-Item -ItemType Directory -Path (Join-Path $env:USERPROFILE ".claude") -Force
-    $null = New-Item -ItemType Directory -Path (Join-Path $env:LOCALAPPDATA "claude-context") -Force
+    $null = New-Item -ItemType Directory -Path (Join-Path -Path $env:USERPROFILE -ChildPath ".claude") -Force
+    $null = New-Item -ItemType Directory -Path (Join-Path -Path $env:LOCALAPPDATA -ChildPath "claude-context") -Force
     
     # History/OAuth/Auto/Advanced mode directories
     if ($SelectedMode -in @("history", "oauth", "auto", "advanced")) {
         Write-Host "Creating conversation history management directories..."
-        $null = New-Item -ItemType Directory -Path (Join-Path $env:USERPROFILE ".claude\history") -Force
-        $null = New-Item -ItemType Directory -Path (Join-Path $env:USERPROFILE ".claude\summaries") -Force
+        $null = New-Item -ItemType Directory -Path (Join-Path -Path $env:USERPROFILE -ChildPath ".claude\history") -Force
+        $null = New-Item -ItemType Directory -Path (Join-Path -Path $env:USERPROFILE -ChildPath ".claude\summaries") -Force
         Write-ColoredOutput "Directory creation completed" "Green"
     }
 }
@@ -156,9 +156,10 @@ function Test-Installation {
         $errors += "Claude Context is not installed."
     }
     
-    if (-not (Test-Path (Join-Path $env:USERPROFILE ".claude\settings.json"))) {
-        $errors += "Claude Code settings file not found."
-    }
+    # Note: settings.json will be created automatically if needed, so we don't treat this as an error
+    # if (-not (Test-Path (Join-Path -Path $env:USERPROFILE -ChildPath ".claude\settings.json"))) {
+    #     $errors += "Claude Code settings file not found."
+    # }
     
     return $errors
 }
@@ -187,7 +188,7 @@ function Show-Usage {
             Write-Host "Auto summary feature is enabled. (Using Claude Code OAuth)"
             Write-Host "Claude Code authentication information is used automatically."
             Write-Host ""
-            if (-not (Test-Path (Join-Path $env:USERPROFILE ".claude\.credentials.json"))) {
+            if (-not (Test-Path (Join-Path -Path $env:USERPROFILE -ChildPath ".claude\.credentials.json"))) {
                 Write-ColoredOutput "Please log in to Claude Code first." "Yellow"
             }
         }
@@ -253,11 +254,22 @@ function Select-HookType {
 function Update-Hooks {
     param([string]$UseHookType)
     
-    $claudeConfig = Join-Path $env:USERPROFILE ".claude\settings.json"
-    
+    $claudeConfig = Join-Path -Path $env:USERPROFILE -ChildPath ".claude\settings.json"
+
     if (-not (Test-Path $claudeConfig)) {
-        Write-ColoredOutput "Claude settings file not found." "Yellow"
-        return
+        Write-ColoredOutput "Claude settings file not found. Creating default settings..." "Yellow"
+
+        # Create .claude directory if it doesn't exist
+        $claudeDir = Join-Path -Path $env:USERPROFILE -ChildPath ".claude"
+        $null = New-Item -ItemType Directory -Path $claudeDir -Force
+
+        # Create default settings.json
+        $defaultSettings = @{
+            hooks = @{}
+        }
+
+        $defaultSettings | ConvertTo-Json -Depth 10 | Set-Content -Path $claudeConfig -Encoding UTF8
+        Write-ColoredOutput "Default Claude settings created: $claudeConfig" "Green"
     }
     
     Write-Host "Updating hooks to use $UseHookType..."

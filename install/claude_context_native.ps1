@@ -13,7 +13,7 @@ $ErrorActionPreference = "Stop"
 # 설정 로드
 function Load-ClaudeConfig {
     $claudeHome = $env:CLAUDE_HOME ?? "$env:USERPROFILE\.claude"
-    $configPath = Join-Path $claudeHome "hooks\claude-context\config.ps1"
+    $configPath = Join-Path -Path $claudeHome -ChildPath "hooks\claude-context\config.ps1"
     
     if (Test-Path $configPath) {
         try {
@@ -53,7 +53,7 @@ function Get-ClaudeContent {
     $claudeHome = $env:CLAUDE_HOME ?? "$env:USERPROFILE\.claude"
     
     # 전역 CLAUDE.md
-    $globalClaudeMd = Join-Path $claudeHome "CLAUDE.md"
+    $globalClaudeMd = Join-Path -Path $claudeHome -ChildPath "CLAUDE.md"
     if (Test-Path $globalClaudeMd) {
         $globalContent = Get-Content $globalClaudeMd -Raw -ErrorAction SilentlyContinue
         if ($globalContent) {
@@ -64,7 +64,7 @@ function Get-ClaudeContent {
     }
     
     # 프로젝트 CLAUDE.md (현재 디렉토리)
-    $projectClaudeMd = Join-Path (Get-Location) "CLAUDE.md"
+    $projectClaudeMd = Join-Path -Path (Get-Location) -ChildPath "CLAUDE.md"
     if (Test-Path $projectClaudeMd) {
         $projectContent = Get-Content $projectClaudeMd -Raw -ErrorAction SilentlyContinue
         if ($projectContent) {
@@ -123,7 +123,7 @@ function Get-CachedContent {
     $hasher = [System.Security.Cryptography.SHA256]::Create()
     $hash = $hasher.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($Content))
     $hashString = [System.BitConverter]::ToString($hash) -replace '-', ''
-    $cacheFile = Join-Path $CacheDir "$hashString.cache"
+    $cacheFile = Join-Path -Path $CacheDir -ChildPath "$hashString.cache"
     
     # 캐시 유효성 검사
     $maxAge = [int]($env:CLAUDE_CACHE_MAX_AGE ?? "3600")

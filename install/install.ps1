@@ -29,9 +29,9 @@ function Write-ColoredOutput {
 # Configuration
 $SCRIPT_DIR = Split-Path -Parent $MyInvocation.MyCommand.Path
 $PROJECT_ROOT = Split-Path -Parent $SCRIPT_DIR
-$INSTALL_BASE = Join-Path $env:USERPROFILE ".claude\hooks"
-$INSTALL_DIR = Join-Path $INSTALL_BASE "claude-context"
-$CONFIG_FILE = Join-Path $INSTALL_BASE "claude-context.conf"
+$INSTALL_BASE = Join-Path -Path $env:USERPROFILE -ChildPath ".claude\hooks"
+$INSTALL_DIR = Join-Path -Path $INSTALL_BASE -ChildPath "claude-context"
+$CONFIG_FILE = Join-Path -Path $INSTALL_BASE -ChildPath "claude-context.conf"
 
 # Print header
 function Print-Header {
@@ -115,19 +115,20 @@ function New-Backup {
 
 # Install files
 function Install-Files {
+    param([string]$Mode)
     Write-Host "Installing files..."
     
     # Create claude-context directories
     $dirs = @(
-        (Join-Path $INSTALL_DIR "src\core"),
-        (Join-Path $INSTALL_DIR "src\utils"),
-        (Join-Path $INSTALL_DIR "docs"),
-        (Join-Path $INSTALL_DIR "config")
+        (Join-Path -Path $INSTALL_DIR -ChildPath "src\core"),
+        (Join-Path -Path $INSTALL_DIR -ChildPath "src\utils"),
+        (Join-Path -Path $INSTALL_DIR -ChildPath "docs"),
+        (Join-Path -Path $INSTALL_DIR -ChildPath "config")
     )
-    
+
     # Add monitor directory only for specific modes
     if ($Mode -eq "history" -or $Mode -eq "oauth" -or $Mode -eq "auto" -or $Mode -eq "advanced") {
-        $dirs += (Join-Path $INSTALL_DIR "src\monitor")
+        $dirs += (Join-Path -Path $INSTALL_DIR -ChildPath "src\monitor")
     }
     
     foreach ($dir in $dirs) {
@@ -139,7 +140,7 @@ function Install-Files {
     $missingCount = 0
     
     foreach ($dir in $requiredDirs) {
-        $sourcePath = Join-Path $PROJECT_ROOT $dir
+        $sourcePath = Join-Path -Path $PROJECT_ROOT -ChildPath $dir
         if (-not (Test-Path $sourcePath)) {
             Write-ColoredOutput "Error: Required directory '$dir' not found" "Red"
             $missingCount++
@@ -154,27 +155,27 @@ function Install-Files {
     }
     
     # Copy core files
-    Copy-Item -Recurse (Join-Path $PROJECT_ROOT "core") (Join-Path $INSTALL_DIR "src") -Force
-    Copy-Item -Recurse (Join-Path $PROJECT_ROOT "utils") (Join-Path $INSTALL_DIR "src") -Force
+    Copy-Item -Recurse -Path (Join-Path -Path $PROJECT_ROOT -ChildPath "core") -Destination (Join-Path -Path $INSTALL_DIR -ChildPath "src") -Force
+    Copy-Item -Recurse -Path (Join-Path -Path $PROJECT_ROOT -ChildPath "utils") -Destination (Join-Path -Path $INSTALL_DIR -ChildPath "src") -Force
     
     # Copy monitor directory only for specific modes
     if ($Mode -eq "history" -or $Mode -eq "oauth" -or $Mode -eq "auto" -or $Mode -eq "advanced") {
-        if (Test-Path (Join-Path $PROJECT_ROOT "monitor")) {
-            Copy-Item -Recurse (Join-Path $PROJECT_ROOT "monitor") (Join-Path $INSTALL_DIR "src") -Force
+        if (Test-Path (Join-Path -Path $PROJECT_ROOT -ChildPath "monitor")) {
+            Copy-Item -Recurse -Path (Join-Path -Path $PROJECT_ROOT -ChildPath "monitor") -Destination (Join-Path -Path $INSTALL_DIR -ChildPath "src") -Force
         }
     }
     
     # Copy only essential documentation
-    if (Test-Path (Join-Path $PROJECT_ROOT "docs")) {
-        $docsDir = Join-Path $INSTALL_DIR "docs"
+    if (Test-Path (Join-Path -Path $PROJECT_ROOT -ChildPath "docs")) {
+        $docsDir = Join-Path -Path $INSTALL_DIR -ChildPath "docs"
         $null = New-Item -ItemType Directory -Path $docsDir -Force
         
         # Copy only essential docs
         $essentialDocs = @("INSTALL.md", "LICENSE", "PROJECT_CONTEXT.md")
         foreach ($doc in $essentialDocs) {
-            $sourcePath = Join-Path $PROJECT_ROOT "docs" $doc
+            $sourcePath = Join-Path -Path (Join-Path -Path $PROJECT_ROOT -ChildPath "docs") -ChildPath $doc
             if (Test-Path $sourcePath) {
-                Copy-Item $sourcePath $docsDir -Force
+                Copy-Item -Path $sourcePath -Destination $docsDir -Force
             }
         }
     }
@@ -182,19 +183,19 @@ function Install-Files {
     # Copy main documentation files
     $mainDocs = @("README.md", "README.en.md", "README.windows.md")
     foreach ($doc in $mainDocs) {
-        $sourcePath = Join-Path $PROJECT_ROOT $doc
+        $sourcePath = Join-Path -Path $PROJECT_ROOT -ChildPath $doc
         if (Test-Path $sourcePath) {
-            Copy-Item $sourcePath $INSTALL_DIR -Force
+            Copy-Item -Path $sourcePath -Destination $INSTALL_DIR -Force
         }
     }
-    if (Test-Path (Join-Path $PROJECT_ROOT "config.sh")) {
-        Copy-Item (Join-Path $PROJECT_ROOT "config.sh") $INSTALL_DIR -Force
+    if (Test-Path (Join-Path -Path $PROJECT_ROOT -ChildPath "config.sh")) {
+        Copy-Item -Path (Join-Path -Path $PROJECT_ROOT -ChildPath "config.sh") -Destination $INSTALL_DIR -Force
     }
     
     # Create Windows wrapper scripts
-    $injectorWrapperPath = Join-Path $INSTALL_BASE "claude_context_injector.ps1"
-    $userPromptWrapperPath = Join-Path $INSTALL_BASE "claude_user_prompt_injector.ps1"
-    $precompactWrapperPath = Join-Path $INSTALL_BASE "claude_context_precompact.ps1"
+    $injectorWrapperPath = Join-Path -Path $INSTALL_BASE -ChildPath "claude_context_injector.ps1"
+    $userPromptWrapperPath = Join-Path -Path $INSTALL_BASE -ChildPath "claude_user_prompt_injector.ps1"
+    $precompactWrapperPath = Join-Path -Path $INSTALL_BASE -ChildPath "claude_context_precompact.ps1"
     
     # injector wrapper
     $injectorContent = @"
@@ -362,7 +363,7 @@ CLAUDE_CONTEXT_MODE="$SelectedMode"
     Set-Content -Path $CONFIG_FILE -Value $configContent -Encoding UTF8
     
     # Create config.sh
-    $configShPath = Join-Path $INSTALL_DIR "config.sh"
+    $configShPath = Join-Path -Path $INSTALL_DIR -ChildPath "config.sh"
     $configShContent = @"
 #!/usr/bin/env bash
 # Claude Context Configuration - Windows Compatible
@@ -394,7 +395,7 @@ export CLAUDE_CACHE_MAX_AGE
     Set-Content -Path $configShPath -Value $configShContent -Encoding UTF8
 
     # Create config.ps1 for PowerShell environment
-    $configPs1Path = Join-Path $INSTALL_DIR "config.ps1"
+    $configPs1Path = Join-Path -Path $INSTALL_DIR -ChildPath "config.ps1"
     $configPs1Content = @"
 # Claude Context Configuration - PowerShell
 # 이 파일은 PowerShell 환경에서 Claude Context 환경 변수를 설정합니다.
@@ -431,12 +432,22 @@ Write-Verbose "Claude Context PowerShell configuration loaded (Mode: $SelectedMo
 function Update-ClaudeConfig {
     param([string]$UseHookType)
     
-    $claudeConfig = Join-Path $env:USERPROFILE ".claude\settings.json"
-    
+    $claudeConfig = Join-Path -Path $env:USERPROFILE -ChildPath ".claude\settings.json"
+
     if (-not (Test-Path $claudeConfig)) {
-        Write-ColoredOutput "Claude settings file not found." "Yellow"
-        Write-Host "Please run Claude Code once and try again."
-        return
+        Write-ColoredOutput "Claude settings file not found. Creating default settings..." "Yellow"
+
+        # Create .claude directory if it doesn't exist
+        $claudeDir = Join-Path -Path $env:USERPROFILE -ChildPath ".claude"
+        $null = New-Item -ItemType Directory -Path $claudeDir -Force
+
+        # Create default settings.json
+        $defaultSettings = @{
+            hooks = @{}
+        }
+
+        $defaultSettings | ConvertTo-Json -Depth 10 | Set-Content -Path $claudeConfig -Encoding UTF8
+        Write-ColoredOutput "Default Claude settings created: $claudeConfig" "Green"
     }
     
     Write-Host "Updating Claude configuration (Hook: $UseHookType)..."
@@ -449,9 +460,9 @@ function Update-ClaudeConfig {
     try {
         $config = Get-Content $claudeConfig | ConvertFrom-Json
         
-        $injectorPath = Join-Path $INSTALL_BASE "claude_context_injector.ps1"
-        $userPromptPath = Join-Path $INSTALL_BASE "claude_user_prompt_injector.ps1"
-        $precompactPath = Join-Path $INSTALL_BASE "claude_context_precompact.ps1"
+        $injectorPath = Join-Path -Path $INSTALL_BASE -ChildPath "claude_context_injector.ps1"
+        $userPromptPath = Join-Path -Path $INSTALL_BASE -ChildPath "claude_user_prompt_injector.ps1"
+        $precompactPath = Join-Path -Path $INSTALL_BASE -ChildPath "claude_context_precompact.ps1"
         
         # Create hooks based on HookType
         $hooksConfig = @{
@@ -516,13 +527,13 @@ function New-Directories {
     param([string]$SelectedMode)
     
     # Basic directories
-    $null = New-Item -ItemType Directory -Path (Join-Path $env:USERPROFILE ".claude") -Force
-    $null = New-Item -ItemType Directory -Path (Join-Path $env:LOCALAPPDATA "claude-context") -Force
-    
+    $null = New-Item -ItemType Directory -Path (Join-Path -Path $env:USERPROFILE -ChildPath ".claude") -Force
+    $null = New-Item -ItemType Directory -Path (Join-Path -Path $env:LOCALAPPDATA -ChildPath "claude-context") -Force
+
     # History/OAuth/Auto/Advanced mode directories
     if ($SelectedMode -in @("history", "oauth", "auto", "advanced")) {
-        $null = New-Item -ItemType Directory -Path (Join-Path $env:USERPROFILE ".claude\history") -Force
-        $null = New-Item -ItemType Directory -Path (Join-Path $env:USERPROFILE ".claude\summaries") -Force
+        $null = New-Item -ItemType Directory -Path (Join-Path -Path $env:USERPROFILE -ChildPath ".claude\history") -Force
+        $null = New-Item -ItemType Directory -Path (Join-Path -Path $env:USERPROFILE -ChildPath ".claude\summaries") -Force
     }
 }
 
@@ -568,7 +579,7 @@ function Main {
     New-Backup
     
     # Install
-    Install-Files
+    Install-Files -Mode $selectedMode
     New-Config $selectedMode
     New-Directories $selectedMode
     Update-ClaudeConfig -UseHookType $HookType

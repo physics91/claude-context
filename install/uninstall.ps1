@@ -18,9 +18,9 @@ function Write-ColoredOutput {
 }
 
 # Configuration
-$INSTALL_BASE = Join-Path $env:USERPROFILE ".claude\hooks"
-$INSTALL_DIR = Join-Path $INSTALL_BASE "claude-context"
-$CONFIG_FILE = Join-Path $INSTALL_BASE "claude-context.conf"
+$INSTALL_BASE = Join-Path -Path $env:USERPROFILE -ChildPath ".claude\hooks"
+$INSTALL_DIR = Join-Path -Path $INSTALL_BASE -ChildPath "claude-context"
+$CONFIG_FILE = Join-Path -Path $INSTALL_BASE -ChildPath "claude-context.conf"
 
 # Print header
 function Print-Header {
@@ -47,16 +47,16 @@ function Confirm-Uninstall {
         Write-Host "  - Configuration file: $CONFIG_FILE"
     }
     
-    if (Test-Path (Join-Path $INSTALL_BASE "claude_context_injector.ps1")) {
-        Write-Host "  - Injector script: $(Join-Path $INSTALL_BASE 'claude_context_injector.ps1')"
+    if (Test-Path (Join-Path -Path $INSTALL_BASE -ChildPath "claude_context_injector.ps1")) {
+        Write-Host "  - Injector script: $(Join-Path -Path $INSTALL_BASE -ChildPath 'claude_context_injector.ps1')"
     }
-    
-    if (Test-Path (Join-Path $INSTALL_BASE "claude_user_prompt_injector.ps1")) {
-        Write-Host "  - User Prompt Injector script: $(Join-Path $INSTALL_BASE 'claude_user_prompt_injector.ps1')"
+
+    if (Test-Path (Join-Path -Path $INSTALL_BASE -ChildPath "claude_user_prompt_injector.ps1")) {
+        Write-Host "  - User Prompt Injector script: $(Join-Path -Path $INSTALL_BASE -ChildPath 'claude_user_prompt_injector.ps1')"
     }
-    
-    if (Test-Path (Join-Path $INSTALL_BASE "claude_context_precompact.ps1")) {
-        Write-Host "  - PreCompact script: $(Join-Path $INSTALL_BASE 'claude_context_precompact.ps1')"
+
+    if (Test-Path (Join-Path -Path $INSTALL_BASE -ChildPath "claude_context_precompact.ps1")) {
+        Write-Host "  - PreCompact script: $(Join-Path -Path $INSTALL_BASE -ChildPath 'claude_context_precompact.ps1')"
     }
     
     Write-Host "  - Remove hooks from Claude Code settings"
@@ -72,10 +72,10 @@ function Confirm-Uninstall {
 
 # Remove Claude hooks
 function Remove-ClaudeHooks {
-    $claudeConfig = Join-Path $env:USERPROFILE ".claude\settings.json"
+    $claudeConfig = Join-Path -Path $env:USERPROFILE -ChildPath ".claude\settings.json"
     
     if (-not (Test-Path $claudeConfig)) {
-        Write-ColoredOutput "Claude settings file not found." "Yellow"
+        Write-ColoredOutput "Claude settings file not found. No hooks to remove." "Yellow"
         return
     }
     
@@ -136,9 +136,9 @@ function Remove-Files {
     
     # Remove wrapper scripts
     $wrapperScripts = @(
-        (Join-Path $INSTALL_BASE "claude_context_injector.ps1"),
-        (Join-Path $INSTALL_BASE "claude_user_prompt_injector.ps1"),
-        (Join-Path $INSTALL_BASE "claude_context_precompact.ps1")
+        (Join-Path -Path $INSTALL_BASE -ChildPath "claude_context_injector.ps1"),
+        (Join-Path -Path $INSTALL_BASE -ChildPath "claude_user_prompt_injector.ps1"),
+        (Join-Path -Path $INSTALL_BASE -ChildPath "claude_context_precompact.ps1")
     )
     
     foreach ($script in $wrapperScripts) {
@@ -169,20 +169,20 @@ function Test-Cleanup {
         $remaining += "Configuration file"
     }
     
-    if (Test-Path (Join-Path $INSTALL_BASE "claude_context_injector.ps1")) {
+    if (Test-Path (Join-Path -Path $INSTALL_BASE -ChildPath "claude_context_injector.ps1")) {
         $remaining += "Injector script"
     }
-    
-    if (Test-Path (Join-Path $INSTALL_BASE "claude_user_prompt_injector.ps1")) {
+
+    if (Test-Path (Join-Path -Path $INSTALL_BASE -ChildPath "claude_user_prompt_injector.ps1")) {
         $remaining += "User Prompt Injector script"
     }
-    
-    if (Test-Path (Join-Path $INSTALL_BASE "claude_context_precompact.ps1")) {
+
+    if (Test-Path (Join-Path -Path $INSTALL_BASE -ChildPath "claude_context_precompact.ps1")) {
         $remaining += "PreCompact script"
     }
-    
+
     # Check Claude settings
-    $claudeConfig = Join-Path $env:USERPROFILE ".claude\settings.json"
+    $claudeConfig = Join-Path -Path $env:USERPROFILE -ChildPath ".claude\settings.json"
     if (Test-Path $claudeConfig) {
         try {
             $config = Get-Content $claudeConfig | ConvertFrom-Json
