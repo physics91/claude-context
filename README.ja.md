@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[English](./README_en.md) | [中文](./README_zh.md) | **日本語** | [한국어](./README.md)
+[English](./README.en.md) | [中文](./README.zh.md) | **日本語** | [한국어](./README.md)
 
 </div>
 
@@ -100,6 +100,49 @@ PowerShell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.claude\hooks\install
 # インストール時に Hook タイプを指定
 ./install/install.sh --hook-type UserPromptSubmit  # または PreToolUse
 ```
+
+## 🔄 アップデート
+
+### ワンクリックアップデート
+
+**Linux/macOS:**
+```bash
+curl -sSL https://raw.githubusercontent.com/physics91/claude-context/main/install/one-line-update.sh | bash
+```
+
+**Windows (PowerShell):**
+```powershell
+iex (irm https://raw.githubusercontent.com/physics91/claude-context/main/install/one-line-update.ps1)
+```
+
+### アップデートオプション
+
+**強制アップデート（バージョンチェックをスキップ）：**
+```bash
+# Linux/macOS
+CLAUDE_UPDATE_FORCE=true curl -sSL https://raw.githubusercontent.com/physics91/claude-context/main/install/one-line-update.sh | bash
+
+# Windows
+$env:CLAUDE_UPDATE_FORCE = "true"; iex (irm https://raw.githubusercontent.com/physics91/claude-context/main/install/one-line-update.ps1)
+```
+
+**バックアップ保持数の設定：**
+```bash
+# Linux/macOS（デフォルト：5個）
+CLAUDE_UPDATE_BACKUP_KEEP=10 curl -sSL https://raw.githubusercontent.com/physics91/claude-context/main/install/one-line-update.sh | bash
+
+# Windows
+$env:CLAUDE_UPDATE_BACKUP_KEEP = "10"; iex (irm https://raw.githubusercontent.com/physics91/claude-context/main/install/one-line-update.ps1)
+```
+
+### 主要機能
+- ✅ **自動バックアップ**：アップデート前に既存バージョンを自動バックアップ
+- ✅ **設定保持**：ユーザー設定と CLAUDE.md ファイルを保持
+- ✅ **失敗時のロールバック**：エラー時に自動的に前のバージョンに復元
+- ✅ **バージョン管理**：セマンティックバージョニング対応
+- ✅ **クロスプラットフォーム**：Windows/Linux/macOS 対応
+
+詳細なアップデートガイドは [UPDATE.md](./docs/UPDATE.md) を参照してください。
 
 ## 🗑️ アンインストール
 

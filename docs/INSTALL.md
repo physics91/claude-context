@@ -1,46 +1,53 @@
-# CLAUDE.md Hook 설치 가이드
+# Claude Context 설치 가이드
 
-CLAUDE.md Hook은 Claude Code가 항상 프로젝트의 컨텍스트를 인식하도록 하는 자동화 도구입니다.
+Claude Context는 Claude Code가 항상 프로젝트의 컨텍스트를 인식하도록 하는 자동화 도구입니다.
 
-## 🚀 빠른 설치 (추천)
+## 🚀 원클릭 설치 (추천)
 
-한 줄로 설치하기:
-
+**Linux/macOS:**
 ```bash
-curl -sSL https://raw.githubusercontent.com/YOUR_USERNAME/claude-md-hook/main/one-line-install.sh | bash
+curl -sSL https://raw.githubusercontent.com/physics91/claude-context/main/install/one-line-install.sh | bash
 ```
 
-또는 wget 사용:
-
-```bash
-wget -qO- https://raw.githubusercontent.com/YOUR_USERNAME/claude-md-hook/main/one-line-install.sh | bash
+**Windows (PowerShell):**
+```powershell
+# 권장: 스크립트 다운로드 후 실행
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/physics91/claude-context/main/install/one-line-install.ps1" -OutFile "install.ps1"
+PowerShell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
 ## 📦 수동 설치
 
 1. 저장소 클론:
 ```bash
-git clone https://github.com/YOUR_USERNAME/claude-md-hook.git
-cd claude-md-hook
+git clone https://github.com/physics91/claude-context.git
+cd claude-context
 ```
 
 2. 설치 스크립트 실행:
 ```bash
-./install.sh
+# Linux/macOS
+./install/install.sh
+
+# Windows
+.\install\install.ps1
 ```
 
 ## 🔧 필수 요구사항
 
 ### Claude Code
-- **권장 버전: v1.0.48+** (PreCompact hook 지원)
-- **최소 버전: v1.0.41** (PreToolUse hook만 지원)
+- **권장 버전: v1.0.54+** (PreCompact hook 지원)
+- **최소 버전: v1.0.48** (PreToolUse hook 지원)
 - v1.0.38에서 hooks 기능 추가
 - v1.0.41에서 hook_event_name, timeout 설정 등 개선
 - v1.0.48에서 PreCompact hook 추가 (대화 압축 시 컨텍스트 보호)
+- v1.0.54에서 UserPromptSubmit hook 추가 (더 안정적인 컨텍스트 주입)
 - 버전 확인: Help → About Claude Code
 
 ### 시스템 도구
-다음 명령어들이 필요합니다 (설치 스크립트가 자동으로 확인/설치):
+
+**Linux/macOS:**
+다음 명령어들이 필요합니다 (설치 스크립트가 자동으로 확인):
 - `jq` - JSON 처리
 - `sha256sum` - 파일 해시 계산
 - `gzip`, `zcat` - 압축 처리
@@ -53,6 +60,22 @@ sudo apt install jq coreutils gzip
 macOS:
 ```bash
 brew install jq coreutils
+```
+
+**Windows:**
+- PowerShell 5.0+ (Windows 10/11에 기본 포함)
+- Git for Windows (bash 환경 제공)
+
+Git for Windows 설치:
+```powershell
+# Chocolatey 사용
+choco install git
+
+# Scoop 사용
+scoop install git
+
+# 또는 공식 웹사이트에서 다운로드
+# https://git-scm.com/download/win
 ```
 
 ## 🎯 주요 기능
@@ -96,10 +119,41 @@ brew install jq coreutils
 - 실시간 모니터링
 - 프로젝트별 테스트
 
+## 🔄 업데이트
+
+### 원클릭 업데이트
+
+**Linux/macOS:**
+```bash
+curl -sSL https://raw.githubusercontent.com/physics91/claude-context/main/install/one-line-update.sh | bash
+```
+
+**Windows (PowerShell):**
+```powershell
+iex (irm https://raw.githubusercontent.com/physics91/claude-context/main/install/one-line-update.ps1)
+```
+
+### 업데이트 옵션
+
+**강제 업데이트:**
+```bash
+# Linux/macOS
+CLAUDE_UPDATE_FORCE=true curl -sSL https://raw.githubusercontent.com/physics91/claude-context/main/install/one-line-update.sh | bash
+
+# Windows
+$env:CLAUDE_UPDATE_FORCE = "true"; iex (irm https://raw.githubusercontent.com/physics91/claude-context/main/install/one-line-update.ps1)
+```
+
+자세한 업데이트 가이드는 [UPDATE.md](./UPDATE.md)를 참조하세요.
+
 ## 🗑️ 제거
 
 ```bash
-~/.claude/hooks/install.sh --uninstall
+# Linux/macOS
+~/.claude/hooks/claude-context/uninstall.sh
+
+# Windows
+PowerShell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.claude\hooks\claude-context\uninstall.ps1"
 ```
 
 ## 🔍 문제 해결

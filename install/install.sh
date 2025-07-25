@@ -221,6 +221,9 @@ install_files() {
     # 설정 파일 복사
     [[ -f "$PROJECT_ROOT/config.sh" ]] && cp "$PROJECT_ROOT/config.sh" "$INSTALL_DIR/"
     
+    # VERSION 파일 복사 (버전 관리용)
+    [[ -f "$PROJECT_ROOT/VERSION" ]] && cp "$PROJECT_ROOT/VERSION" "$INSTALL_DIR/"
+    
     # 메인 스크립트 복사
     [[ -f "$PROJECT_ROOT/claude_context_injector.sh" ]] && cp "$PROJECT_ROOT/claude_context_injector.sh" "$INSTALL_DIR/"
     [[ -f "$PROJECT_ROOT/claude_context_precompact.sh" ]] && cp "$PROJECT_ROOT/claude_context_precompact.sh" "$INSTALL_DIR/"
