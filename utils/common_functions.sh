@@ -45,23 +45,35 @@ directory_exists() {
 # --- CLAUDE.md 파일 관리 ---
 find_claude_md_files() {
     local claude_files=()
+    local found_files=()  # 중복 방지를 위한 배열
     
     # 1. 전역 CLAUDE.md
     local global_file="${HOME}/.claude/CLAUDE.md"
     if file_exists "$global_file"; then
         claude_files+=("$global_file")
+        found_files+=("$global_file")
     fi
     
     # 2. 프로젝트별 CLAUDE.md 찾기
     local current_dir="$PWD"
-    while [[ "$current_dir" != "/" ]]; do
-        # 다양한 패턴 확인
-        for pattern in "CLAUDE.md" ".claude/CLAUDE.md" ".claude.md"; do
+    while [[ "$current_dir" != "/" && "$current_dir" != "$HOME" ]]; do
+        # 다양한 패턴 확인 (우선순위: CLAUDE.md → CLAUDE.local.md → .claude/CLAUDE.md → .claude.md)
+        for pattern in "CLAUDE.md" "CLAUDE.local.md" ".claude/CLAUDE.md" ".claude.md"; do
             local test_path="$current_dir/$pattern"
             if file_exists "$test_path"; then
-                claude_files+=("$test_path")
-                echo "${claude_files[@]}"
-                return 0
+                # 중복 확인
+                local is_duplicate=false
+                for found in "${found_files[@]}"; do
+                    if [[ "$found" == "$test_path" ]]; then
+                        is_duplicate=true
+                        break
+                    fi
+                done
+                
+                if [[ "$is_duplicate" == false ]]; then
+                    claude_files+=("$test_path")
+                    found_files+=("$test_path")
+                fi
             fi
         done
         current_dir="$(dirname "$current_dir")"

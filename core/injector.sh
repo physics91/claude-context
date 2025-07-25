@@ -16,6 +16,7 @@ COMPONENT="Injector"
 
 # --- 초기화 ---
 log_debug "Starting injector (mode: $(get_mode))" "$COMPONENT"
+log_info "Claude Context Injector activated - Mode: $(get_mode)" "$COMPONENT"
 
 # 디렉토리 생성
 ensure_directory "$CLAUDE_CACHE_DIR"
@@ -116,8 +117,11 @@ handle_pretooluse() {
     # 확률 체크
     if ! should_inject; then
         log_debug "Injection skipped (probability check)" "$COMPONENT"
+        log_info "Hook execution skipped (probability check)" "$COMPONENT"
         return 0
     fi
+    
+    log_info "Processing UserPromptSubmit hook..." "$COMPONENT"
     
     # 락 획득
     if ! acquire_lock "$LOCK_FILE" "$CLAUDE_LOCK_TIMEOUT"; then
@@ -144,8 +148,11 @@ handle_pretooluse() {
     # 중복 주입 방지
     if is_already_injected "$claude_content"; then
         log_debug "Content already injected" "$COMPONENT"
+        log_info "Context injection skipped (already present)" "$COMPONENT"
         return 0
     fi
+    
+    log_info "Injecting CLAUDE.md context..." "$COMPONENT"
     
     # 캐싱 처리
     if [[ "$CLAUDE_ENABLE_CACHE" == "true" ]]; then
@@ -165,6 +172,7 @@ handle_pretooluse() {
     
     # 출력
     echo -n "$claude_content"
+    log_info "Context injection completed successfully" "$COMPONENT"
 }
 
 # --- PreCompact Hook 핸들러 ---
@@ -201,6 +209,10 @@ main() {
     case "$hook_type" in
         precompact)
             handle_precompact
+            ;;
+        user_prompt_submit)
+            log_info "UserPromptSubmit hook triggered" "$COMPONENT"
+            handle_pretooluse
             ;;
         *)
             handle_pretooluse

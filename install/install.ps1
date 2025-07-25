@@ -17,6 +17,30 @@ param(
 # Stop on errors
 $ErrorActionPreference = "Stop"
 
+# Set UTF-8 encoding for better Unicode support
+try {
+    # Set console encodings for better Unicode support
+    [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+    [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false)
+    $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+    
+    # Set PowerShell's default file encoding
+    $PSDefaultParameterValues['*:Encoding'] = 'utf8'
+} catch {
+    Write-Warning "Could not set UTF-8 encoding, some Unicode characters may not display correctly"
+}
+
+# Import common functions
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$CommonFunctionsPath = Join-Path -Path $ScriptDir -ChildPath "common_functions.ps1"
+
+if (Test-Path -Path $CommonFunctionsPath) {
+    . $CommonFunctionsPath
+} else {
+    Write-Error "Common functions module not found: $CommonFunctionsPath"
+    exit 1
+}
+
 # Color output function
 function Write-ColoredOutput {
     param(
@@ -24,6 +48,203 @@ function Write-ColoredOutput {
         [string]$Color = "White"
     )
     Write-Host $Message -ForegroundColor $Color
+}
+
+
+# Generate common environment variables with WSL paths
+function Get-CommonEnvironmentVariables {
+    param(
+        [string]$UserProfileBashPath,
+        [string]$LocalAppDataBashPath
+    )
+    
+    $envVars = @()
+    $envVars += "CLAUDE_CONFIG_FILE='$UserProfileBashPath/.claude/hooks/claude-context/config.sh'"
+    $envVars += "CLAUDE_HOME='$UserProfileBashPath/.claude'"
+    $envVars += "CLAUDE_HOOKS_DIR='$UserProfileBashPath/.claude/hooks'"
+    $envVars += "CLAUDE_HISTORY_DIR='$UserProfileBashPath/.claude/history'"
+    $envVars += "CLAUDE_SUMMARY_DIR='$UserProfileBashPath/.claude/summaries'"
+    $envVars += "CLAUDE_CACHE_DIR='$LocalAppDataBashPath/claude-context'"
+    $envVars += "CLAUDE_LOG_DIR='$UserProfileBashPath/.claude/logs'"
+    
+    return $envVars
+}
+
+# Get timeout values for installation (uses common module function)
+function Get-InstallationTimeoutValues {
+    $timeouts = @{
+        PreCompact = Get-TimeoutValue -EnvVarName "CLAUDE_PRECOMPACT_TIMEOUT" -DefaultValue 5000
+        UserPromptSubmit = Get-TimeoutValue -EnvVarName "CLAUDE_USER_PROMPT_TIMEOUT" -DefaultValue 30000
+        Injector = Get-TimeoutValue -EnvVarName "CLAUDE_INJECTOR_TIMEOUT" -DefaultValue 10000
+    }
+    
+    return $timeouts
+}
+
+# Comprehensive error logging function for troubleshooting
+function Write-ErrorLog {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$Message,
+        [Parameter(Mandatory=$false)]
+        [System.Management.Automation.ErrorRecord]$ErrorRecord,
+        [Parameter(Mandatory=$false)]
+        [string]$Component = "General"
+    )
+    
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $logDir = Join-Path -Path $env:USERPROFILE -ChildPath ".claude\logs"
+    
+    # Ensure log directory exists
+    if (-not (Test-Path $logDir)) {
+        try {
+            $null = New-Item -ItemType Directory -Path $logDir -Force
+        }
+        catch {
+            Write-Warning "Could not create log directory: $logDir"
+            return
+        }
+    }
+    
+    $logFile = Join-Path -Path $logDir -ChildPath "claude-context-install.log"
+    
+    try {
+        $logEntry = "[$timestamp] [$Component] $Message"
+        
+        if ($ErrorRecord) {
+            $logEntry += "`n  Exception: $($ErrorRecord.Exception.Message)"
+            $logEntry += "`n  ScriptStackTrace: $($ErrorRecord.ScriptStackTrace)"
+            if ($ErrorRecord.InvocationInfo) {
+                $logEntry += "`n  Location: $($ErrorRecord.InvocationInfo.ScriptName):$($ErrorRecord.InvocationInfo.ScriptLineNumber)"
+            }
+        }
+        
+        # Use UTF-8 without BOM for better compatibility
+        [System.IO.File]::AppendAllText($logFile, "$logEntry`n", [System.Text.UTF8Encoding]::new($false))
+        Write-ColoredOutput "Error logged to: $logFile" "Yellow"
+    }
+    catch {
+        Write-Warning "Could not write to log file: $logFile"
+    }
+}
+
+# Generate wrapper script content with proper error handling and path conversion
+function New-WrapperScript {
+    param(
+        [Parameter(Mandatory=$true)]
+        [ValidateSet("injector", "precompact", "user_prompt")]
+        [string]$ScriptType,
+        [Parameter(Mandatory=$true)]
+        [string]$ScriptName
+    )
+    
+    try {
+        # Convert paths using helper functions
+        $userProfileBashPath = ConvertTo-WSLPath -WindowsPath $env:USERPROFILE
+        $localAppDataBashPath = ConvertTo-WSLPath -WindowsPath $env:LOCALAPPDATA
+        
+        # Get environment variables using enhanced validation
+        $envResult = Get-SafeEnvironmentVariables -AllowedVars @(
+            'INPUT_MESSAGE', 'CLAUDE_SESSION_ID', 'CLAUDE_CONTEXT_MODE',
+            'CLAUDE_ENABLE_CACHE', 'CLAUDE_INJECT_PROBABILITY'
+        ) -ValidatePaths
+        
+        if (-not $envResult.ValidationPassed) {
+            Write-Warning "Some environment variables had validation issues"
+            if ($envResult.MissingVariables.Count -gt 0) {
+                Write-Verbose "Missing variables: $($envResult.MissingVariables -join ', ')"
+            }
+        }
+        
+        $safeEnvVars = @()
+        foreach ($key in $envResult.Variables.Keys) {
+            $safeEnvVars += "$key='$($envResult.Variables[$key])'"
+        }
+        $commonEnvVars = Get-CommonEnvironmentVariables -UserProfileBashPath $userProfileBashPath -LocalAppDataBashPath $localAppDataBashPath
+        
+        # Combine all environment variables
+        $allEnvVars = $safeEnvVars + $commonEnvVars
+        
+        # Set script path based on type
+        $scriptPath = switch ($ScriptType) {
+            "injector" { "$userProfileBashPath/.claude/hooks/claude-context/src/core/injector.sh" }
+            "precompact" { "$userProfileBashPath/.claude/hooks/claude-context/src/core/precompact.sh" }
+            "user_prompt" { "$userProfileBashPath/.claude/hooks/claude-context/src/core/injector.sh user_prompt_submit" }
+        }
+        
+        # Generate wrapper content
+        $wrapperContent = @"
+# Claude Context $ScriptName Wrapper for Windows (Enhanced)
+try {
+    `$bashExe = Get-Command bash -ErrorAction Stop
+
+    # Environment variable setting (PowerShell -> Bash)
+    `$env:CLAUDE_HOME = "`$env:USERPROFILE\.claude"
+
+    # Collect all environment variables
+    `$envVars = @()
+$($allEnvVars | ForEach-Object { "    `$envVars += `"$_`"" } | Out-String)
+    `$envString = `$envVars -join ' '
+
+    # Process arguments (PowerShell args -> bash)
+    `$bashArgs = if (`$args) {
+        (`$args | ForEach-Object { 
+            # Escape single quotes for bash safety
+            `$escaped = `$_ -replace "'", "'\'''"
+            "'`$escaped'"
+        }) -join ' '
+    } else {
+        ''
+    }
+
+    # Execute bash with environment variables and error handling
+    `$scriptPath = '$scriptPath'
+    `$command = "`$envString '`$scriptPath' `$bashArgs"
+    
+    `$result = & bash -c `$command
+    `$exitCode = `$LASTEXITCODE
+    
+    if (`$exitCode -ne 0) {
+        Write-Warning "Script execution failed with exit code: `$exitCode"
+        # Log error for troubleshooting
+        if (`$env:CLAUDE_DEBUG -eq "true") {
+            Write-Host "Command executed: `$command" -ForegroundColor Yellow
+            Write-Host "Exit code: `$exitCode" -ForegroundColor Red
+        }
+    }
+    
+    exit `$exitCode
+} catch {
+    `$errorMsg = "Failed to execute Claude Context $ScriptName`: `$(`$_.Exception.Message)"
+    Write-Error `$errorMsg
+    
+    # Try to log the error if logging is available
+    try {
+        `$logDir = Join-Path -Path `$env:USERPROFILE -ChildPath ".claude\logs"
+        if (Test-Path `$logDir) {
+            `$timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+            `$logEntry = "[`$timestamp] [Wrapper-$ScriptType] `$errorMsg"
+            Add-Content -Path (Join-Path -Path `$logDir -ChildPath "claude-context-install.log") -Value `$logEntry -Encoding UTF8
+        }
+    } catch {
+        # Silently ignore logging errors
+    }
+    
+    if (`$_.Exception.Message -like "*bash*not*found*") {
+        Write-Host "bash not found. Please install Git for Windows." -ForegroundColor Red
+        Write-Host "Download from: https://git-scm.com/download/win" -ForegroundColor Yellow
+    }
+    
+    exit 1
+}
+"@
+        
+        return $wrapperContent
+    }
+    catch {
+        Write-ErrorLog -Message "Failed to generate wrapper script for $ScriptType" -ErrorRecord $_ -Component "WrapperGeneration"
+        throw "Failed to generate wrapper script: $_"
+    }
 }
 
 # Configuration
@@ -118,21 +339,35 @@ function Install-Files {
     param([string]$Mode)
     Write-Host "Installing files..."
     
-    # Create claude-context directories
-    $dirs = @(
-        (Join-Path -Path $INSTALL_DIR -ChildPath "src\core"),
-        (Join-Path -Path $INSTALL_DIR -ChildPath "src\utils"),
-        (Join-Path -Path $INSTALL_DIR -ChildPath "docs"),
-        (Join-Path -Path $INSTALL_DIR -ChildPath "config")
-    )
+    try {
+        # Create claude-context directories
+        $dirs = @(
+            (Join-Path -Path $INSTALL_DIR -ChildPath "src\core"),
+            (Join-Path -Path $INSTALL_DIR -ChildPath "src\utils"),
+            (Join-Path -Path $INSTALL_DIR -ChildPath "docs"),
+            (Join-Path -Path $INSTALL_DIR -ChildPath "config")
+        )
 
-    # Add monitor directory only for specific modes
-    if ($Mode -eq "history" -or $Mode -eq "oauth" -or $Mode -eq "auto" -or $Mode -eq "advanced") {
-        $dirs += (Join-Path -Path $INSTALL_DIR -ChildPath "src\monitor")
+        # Add monitor directory only for specific modes
+        if ($Mode -eq "history" -or $Mode -eq "oauth" -or $Mode -eq "auto" -or $Mode -eq "advanced") {
+            $dirs += (Join-Path -Path $INSTALL_DIR -ChildPath "src\monitor")
+        }
+        
+        Write-Host "Creating installation directories..."
+        foreach ($dir in $dirs) {
+            try {
+                $null = New-Item -ItemType Directory -Path $dir -Force
+                Write-Verbose "Created directory: $dir"
+            }
+            catch {
+                Write-ErrorLog -Message "Failed to create directory: $dir" -ErrorRecord $_ -Component "DirectoryCreation"
+                throw "Directory creation failed: $dir"
+            }
+        }
     }
-    
-    foreach ($dir in $dirs) {
-        $null = New-Item -ItemType Directory -Path $dir -Force
+    catch {
+        Write-ErrorLog -Message "Critical error during directory creation" -ErrorRecord $_ -Component "Install"
+        throw
     }
     
     # Check required directories
@@ -192,158 +427,33 @@ function Install-Files {
         Copy-Item -Path (Join-Path -Path $PROJECT_ROOT -ChildPath "config.sh") -Destination $INSTALL_DIR -Force
     }
     
-    # Create Windows wrapper scripts
+    # Create Windows wrapper scripts using helper function
     $injectorWrapperPath = Join-Path -Path $INSTALL_BASE -ChildPath "claude_context_injector.ps1"
     $userPromptWrapperPath = Join-Path -Path $INSTALL_BASE -ChildPath "claude_user_prompt_injector.ps1"
     $precompactWrapperPath = Join-Path -Path $INSTALL_BASE -ChildPath "claude_context_precompact.ps1"
     
-    # injector wrapper
-    $injectorContent = @"
-# Claude Context Injector Wrapper for Windows (Enhanced)
-try {
-    `$bashExe = Get-Command bash -ErrorAction Stop
-
-    # Windows 경로를 Git Bash 호환 경로로 변환
-    `$userProfile = `$env:USERPROFILE -replace '\\\\', '/' -replace '^([A-Z]):', '/`$1'
-    `$scriptPath = "`$userProfile/.claude/hooks/claude-context/src/core/injector.sh"
-
-    # 환경 변수 설정 (PowerShell -> Bash)
-    `$env:CLAUDE_HOME = "`$env:USERPROFILE\.claude"
-    `$env:HOME = `$env:USERPROFILE
-
-    # Claude Hook 환경 변수들 수집
-    `$envVars = @()
-    if (`$env:INPUT_MESSAGE) { `$envVars += "INPUT_MESSAGE='`$(`$env:INPUT_MESSAGE -replace "'", "'\''")'" }
-    if (`$env:CLAUDE_SESSION_ID) { `$envVars += "CLAUDE_SESSION_ID='`$(`$env:CLAUDE_SESSION_ID)'" }
-    if (`$env:CLAUDE_CONTEXT_MODE) { `$envVars += "CLAUDE_CONTEXT_MODE='`$(`$env:CLAUDE_CONTEXT_MODE)'" }
-    if (`$env:CLAUDE_ENABLE_CACHE) { `$envVars += "CLAUDE_ENABLE_CACHE='`$(`$env:CLAUDE_ENABLE_CACHE)'" }
-    if (`$env:CLAUDE_INJECT_PROBABILITY) { `$envVars += "CLAUDE_INJECT_PROBABILITY='`$(`$env:CLAUDE_INJECT_PROBABILITY)'" }
-
-    # 기본 환경 변수 추가
-    `$envVars += "CLAUDE_HOME='`$(`$env:USERPROFILE -replace '\\\\', '/')/.claude'"
-    `$envVars += "CLAUDE_HOOKS_DIR='`$(`$env:USERPROFILE -replace '\\\\', '/')/.claude/hooks'"
-    `$envVars += "CLAUDE_HISTORY_DIR='`$(`$env:USERPROFILE -replace '\\\\', '/')/.claude/history'"
-    `$envVars += "CLAUDE_SUMMARY_DIR='`$(`$env:USERPROFILE -replace '\\\\', '/')/.claude/summaries'"
-    `$envVars += "CLAUDE_CACHE_DIR='`$(`$env:LOCALAPPDATA -replace '\\\\', '/')/claude-context'"
-    `$envVars += "CLAUDE_LOG_DIR='`$(`$env:USERPROFILE -replace '\\\\', '/')/.claude/logs'"
-
-    `$envString = `$envVars -join ' '
-
-    # 인수 처리 (PowerShell args -> bash)
-    `$bashArgs = if (`$args) {
-        (`$args | ForEach-Object { "'`$(`$_ -replace "'", "'\''")'" }) -join ' '
-    } else {
-        ''
+    try {
+        Write-Host "Generating wrapper scripts with enhanced error handling..."
+        
+        # Generate injector wrapper
+        $injectorContent = New-WrapperScript -ScriptType "injector" -ScriptName "Injector"
+        Set-Content -Path $injectorWrapperPath -Value $injectorContent -Encoding UTF8
+        Write-ColoredOutput "Created: $injectorWrapperPath" "Green"
+        
+        # Generate precompact wrapper
+        $precompactContent = New-WrapperScript -ScriptType "precompact" -ScriptName "PreCompact"
+        Set-Content -Path $precompactWrapperPath -Value $precompactContent -Encoding UTF8
+        Write-ColoredOutput "Created: $precompactWrapperPath" "Green"
+        
+        # Generate user prompt wrapper
+        $userPromptContent = New-WrapperScript -ScriptType "user_prompt" -ScriptName "User Prompt Injector"
+        Set-Content -Path $userPromptWrapperPath -Value $userPromptContent -Encoding UTF8
+        Write-ColoredOutput "Created: $userPromptWrapperPath" "Green"
     }
-
-    # bash 실행 (환경 변수와 함께)
-    `$command = "`$envString '`$scriptPath' `$bashArgs"
-    & bash -c `$command
-} catch {
-    Write-Error "bash not found. Please install Git for Windows."
-    exit 1
-}
-"@
-    
-    # precompact wrapper
-    $precompactContent = @"
-# Claude Context PreCompact Wrapper for Windows (Enhanced)
-try {
-    `$bashExe = Get-Command bash -ErrorAction Stop
-
-    # Windows 경로를 Git Bash 호환 경로로 변환
-    `$userProfile = `$env:USERPROFILE -replace '\\\\', '/' -replace '^([A-Z]):', '/`$1'
-    `$scriptPath = "`$userProfile/.claude/hooks/claude-context/src/core/precompact.sh"
-
-    # 환경 변수 설정 (PowerShell -> Bash)
-    `$env:CLAUDE_HOME = "`$env:USERPROFILE\.claude"
-    `$env:HOME = `$env:USERPROFILE
-
-    # Claude Hook 환경 변수들 수집
-    `$envVars = @()
-    if (`$env:INPUT_MESSAGE) { `$envVars += "INPUT_MESSAGE='`$(`$env:INPUT_MESSAGE -replace "'", "'\''")'" }
-    if (`$env:CLAUDE_SESSION_ID) { `$envVars += "CLAUDE_SESSION_ID='`$(`$env:CLAUDE_SESSION_ID)'" }
-    if (`$env:CLAUDE_CONTEXT_MODE) { `$envVars += "CLAUDE_CONTEXT_MODE='`$(`$env:CLAUDE_CONTEXT_MODE)'" }
-    if (`$env:CLAUDE_ENABLE_CACHE) { `$envVars += "CLAUDE_ENABLE_CACHE='`$(`$env:CLAUDE_ENABLE_CACHE)'" }
-    if (`$env:CLAUDE_INJECT_PROBABILITY) { `$envVars += "CLAUDE_INJECT_PROBABILITY='`$(`$env:CLAUDE_INJECT_PROBABILITY)'" }
-
-    # 기본 환경 변수 추가
-    `$envVars += "CLAUDE_HOME='`$(`$env:USERPROFILE -replace '\\\\', '/')/.claude'"
-    `$envVars += "CLAUDE_HOOKS_DIR='`$(`$env:USERPROFILE -replace '\\\\', '/')/.claude/hooks'"
-    `$envVars += "CLAUDE_HISTORY_DIR='`$(`$env:USERPROFILE -replace '\\\\', '/')/.claude/history'"
-    `$envVars += "CLAUDE_SUMMARY_DIR='`$(`$env:USERPROFILE -replace '\\\\', '/')/.claude/summaries'"
-    `$envVars += "CLAUDE_CACHE_DIR='`$(`$env:LOCALAPPDATA -replace '\\\\', '/')/claude-context'"
-    `$envVars += "CLAUDE_LOG_DIR='`$(`$env:USERPROFILE -replace '\\\\', '/')/.claude/logs'"
-
-    `$envString = `$envVars -join ' '
-
-    # 인수 처리 (PowerShell args -> bash)
-    `$bashArgs = if (`$args) {
-        (`$args | ForEach-Object { "'`$(`$_ -replace "'", "'\''")'" }) -join ' '
-    } else {
-        ''
+    catch {
+        Write-ErrorLog -Message "Failed to create wrapper scripts" -ErrorRecord $_ -Component "WrapperCreation"
+        throw "Wrapper script creation failed: $_"
     }
-
-    # bash 실행 (환경 변수와 함께)
-    `$command = "`$envString '`$scriptPath' `$bashArgs"
-    & bash -c `$command
-} catch {
-    Write-Error "bash not found. Please install Git for Windows."
-    exit 1
-}
-"@
-    
-    # user prompt wrapper
-    $userPromptContent = @"
-# Claude Context User Prompt Injector Wrapper for Windows (Enhanced)
-try {
-    `$bashExe = Get-Command bash -ErrorAction Stop
-
-    # Windows 경로를 Git Bash 호환 경로로 변환
-    `$userProfile = `$env:USERPROFILE -replace '\\\\', '/' -replace '^([A-Z]):', '/`$1'
-    `$scriptPath = "`$userProfile/.claude/hooks/claude-context/src/core/user_prompt_injector.sh"
-
-    # 환경 변수 설정 (PowerShell -> Bash)
-    `$env:CLAUDE_HOME = "`$env:USERPROFILE\.claude"
-    `$env:HOME = `$env:USERPROFILE
-
-    # Claude Hook 환경 변수들 수집
-    `$envVars = @()
-    if (`$env:INPUT_MESSAGE) { `$envVars += "INPUT_MESSAGE='`$(`$env:INPUT_MESSAGE -replace "'", "'\''")'" }
-    if (`$env:CLAUDE_SESSION_ID) { `$envVars += "CLAUDE_SESSION_ID='`$(`$env:CLAUDE_SESSION_ID)'" }
-    if (`$env:CLAUDE_CONTEXT_MODE) { `$envVars += "CLAUDE_CONTEXT_MODE='`$(`$env:CLAUDE_CONTEXT_MODE)'" }
-    if (`$env:CLAUDE_ENABLE_CACHE) { `$envVars += "CLAUDE_ENABLE_CACHE='`$(`$env:CLAUDE_ENABLE_CACHE)'" }
-    if (`$env:CLAUDE_INJECT_PROBABILITY) { `$envVars += "CLAUDE_INJECT_PROBABILITY='`$(`$env:CLAUDE_INJECT_PROBABILITY)'" }
-
-    # 기본 환경 변수 추가
-    `$envVars += "CLAUDE_HOME='`$(`$env:USERPROFILE -replace '\\\\', '/')/.claude'"
-    `$envVars += "CLAUDE_HOOKS_DIR='`$(`$env:USERPROFILE -replace '\\\\', '/')/.claude/hooks'"
-    `$envVars += "CLAUDE_HISTORY_DIR='`$(`$env:USERPROFILE -replace '\\\\', '/')/.claude/history'"
-    `$envVars += "CLAUDE_SUMMARY_DIR='`$(`$env:USERPROFILE -replace '\\\\', '/')/.claude/summaries'"
-    `$envVars += "CLAUDE_CACHE_DIR='`$(`$env:LOCALAPPDATA -replace '\\\\', '/')/claude-context'"
-    `$envVars += "CLAUDE_LOG_DIR='`$(`$env:USERPROFILE -replace '\\\\', '/')/.claude/logs'"
-
-    `$envString = `$envVars -join ' '
-
-    # 인수 처리 (PowerShell args -> bash)
-    `$bashArgs = if (`$args) {
-        (`$args | ForEach-Object { "'`$(`$_ -replace "'", "'\''")'" }) -join ' '
-    } else {
-        ''
-    }
-
-    # bash 실행 (환경 변수와 함께)
-    `$command = "`$envString '`$scriptPath' `$bashArgs"
-    & bash -c `$command
-} catch {
-    Write-Error "bash not found. Please install Git for Windows."
-    exit 1
-}
-"@
-    
-    Set-Content -Path $injectorWrapperPath -Value $injectorContent -Encoding UTF8
-    Set-Content -Path $userPromptWrapperPath -Value $userPromptContent -Encoding UTF8
-    Set-Content -Path $precompactWrapperPath -Value $precompactContent -Encoding UTF8
     
     Write-ColoredOutput "File installation completed" "Green"
 }
@@ -354,28 +464,41 @@ function New-Config {
     
     Write-Host "Creating configuration files..."
     
-    # Create claude-context.conf
-    $configContent = @"
+    try {
+        # Create claude-context.conf
+        $configContent = @"
 # Claude Context Configuration
 CLAUDE_CONTEXT_HOME="$($INSTALL_DIR.Replace('\', '/'))"
 CLAUDE_CONTEXT_MODE="$SelectedMode"
 "@
-    Set-Content -Path $CONFIG_FILE -Value $configContent -Encoding UTF8
+        Set-Content -Path $CONFIG_FILE -Value $configContent -Encoding UTF8
+        Write-ColoredOutput "Created main config: $CONFIG_FILE" "Green"
+    }
+    catch {
+        Write-ErrorLog -Message "Failed to create main configuration file" -ErrorRecord $_ -Component "ConfigCreation"
+        throw "Configuration file creation failed: $CONFIG_FILE"
+    }
     
-    # Create config.sh
+    # Create config.sh with WSL-style paths using helper functions
     $configShPath = Join-Path -Path $INSTALL_DIR -ChildPath "config.sh"
-    $configShContent = @"
+
+    try {
+        # Convert paths using helper function
+        $userProfileBashPath = ConvertTo-WSLPath -WindowsPath $env:USERPROFILE
+        $localAppDataBashPath = ConvertTo-WSLPath -WindowsPath $env:LOCALAPPDATA
+
+        $configShContent = @"
 #!/usr/bin/env bash
-# Claude Context Configuration - Windows Compatible
+# Claude Context Configuration - Windows Compatible with WSL paths
 
 CLAUDE_CONTEXT_MODE="$SelectedMode"
 CLAUDE_ENABLE_CACHE="true"
 CLAUDE_INJECT_PROBABILITY="1.0"
-CLAUDE_HOME="`${USERPROFILE}/.claude"
-CLAUDE_HOOKS_DIR="`${USERPROFILE}/.claude/hooks"
+CLAUDE_HOME="$userProfileBashPath/.claude"
+CLAUDE_HOOKS_DIR="$userProfileBashPath/.claude/hooks"
 CLAUDE_HISTORY_DIR="`${CLAUDE_HOME}/history"
 CLAUDE_SUMMARY_DIR="`${CLAUDE_HOME}/summaries"
-CLAUDE_CACHE_DIR="`${LOCALAPPDATA}/claude-context"
+CLAUDE_CACHE_DIR="$localAppDataBashPath/claude-context"
 CLAUDE_LOG_DIR="`${CLAUDE_HOME}/logs"
 CLAUDE_LOCK_TIMEOUT="5"
 CLAUDE_CACHE_MAX_AGE="3600"
@@ -392,11 +515,19 @@ export CLAUDE_LOG_DIR
 export CLAUDE_LOCK_TIMEOUT
 export CLAUDE_CACHE_MAX_AGE
 "@
-    Set-Content -Path $configShPath -Value $configShContent -Encoding UTF8
+        Set-Content -Path $configShPath -Value $configShContent -Encoding UTF8
+        Write-ColoredOutput "Created bash config: $configShPath" "Green"
+    }
+    catch {
+        Write-ErrorLog -Message "Failed to create bash configuration file" -ErrorRecord $_ -Component "ConfigCreation"
+        throw "Bash configuration file creation failed: $configShPath"
+    }
 
     # Create config.ps1 for PowerShell environment
     $configPs1Path = Join-Path -Path $INSTALL_DIR -ChildPath "config.ps1"
-    $configPs1Content = @"
+    
+    try {
+        $configPs1Content = @"
 # Claude Context Configuration - PowerShell
 # 이 파일은 PowerShell 환경에서 Claude Context 환경 변수를 설정합니다.
 
@@ -423,7 +554,13 @@ export CLAUDE_CACHE_MAX_AGE
 
 Write-Verbose "Claude Context PowerShell configuration loaded (Mode: $SelectedMode)"
 "@
-    Set-Content -Path $configPs1Path -Value $configPs1Content -Encoding UTF8
+        Set-Content -Path $configPs1Path -Value $configPs1Content -Encoding UTF8
+        Write-ColoredOutput "Created PowerShell config: $configPs1Path" "Green"
+    }
+    catch {
+        Write-ErrorLog -Message "Failed to create PowerShell configuration file" -ErrorRecord $_ -Component "ConfigCreation"
+        throw "PowerShell configuration file creation failed: $configPs1Path"
+    }
 
     Write-ColoredOutput "Configuration files created (bash + PowerShell)" "Green"
 }
@@ -454,7 +591,28 @@ function Update-ClaudeConfig {
     
     # Create backup
     $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
-    Copy-Item $claudeConfig "$claudeConfig.backup.$timestamp"
+    try {
+        Copy-Item $claudeConfig "$claudeConfig.backup.$timestamp"
+        Write-ColoredOutput "Configuration backup created: $claudeConfig.backup.$timestamp" "Green"
+    }
+    catch {
+        Write-ErrorLog -Message "Failed to create backup of Claude configuration" -ErrorRecord $_ -Component "ConfigBackup"
+        Write-Warning "Could not create configuration backup, continuing anyway..."
+    }
+    
+    # Get configurable timeout values
+    try {
+        $timeouts = Get-InstallationTimeoutValues
+        Write-Host "Using timeout values: PreCompact=$($timeouts.PreCompact)ms, UserPromptSubmit=$($timeouts.UserPromptSubmit)ms"
+    }
+    catch {
+        Write-ErrorLog -Message "Failed to get timeout values, using defaults" -ErrorRecord $_ -Component "TimeoutConfig"
+        $timeouts = @{
+            PreCompact = 5000
+            UserPromptSubmit = 30000
+            Injector = 10000
+        }
+    }
     
     # Update JSON configuration
     try {
@@ -464,7 +622,7 @@ function Update-ClaudeConfig {
         $userPromptPath = Join-Path -Path $INSTALL_BASE -ChildPath "claude_user_prompt_injector.ps1"
         $precompactPath = Join-Path -Path $INSTALL_BASE -ChildPath "claude_context_precompact.ps1"
         
-        # Create hooks based on HookType
+        # Create hooks based on HookType with configurable timeouts
         $hooksConfig = @{
             PreCompact = @(
                 @{
@@ -473,7 +631,7 @@ function Update-ClaudeConfig {
                         @{
                             type = "command" 
                             command = "powershell -ExecutionPolicy Bypass -File `"$precompactPath`""
-                            timeout = 1000
+                            timeout = $timeouts.PreCompact
                         }
                     )
                 }
@@ -488,7 +646,7 @@ function Update-ClaudeConfig {
                     @{
                         type = "command"
                         command = "powershell -ExecutionPolicy Bypass -File `"$userPromptPath`""
-                        timeout = 30000
+                        timeout = $timeouts.UserPromptSubmit
                     }
                 )
             }
@@ -500,10 +658,13 @@ function Update-ClaudeConfig {
         $jsonContent = $config | ConvertTo-Json -Depth 10
         # Remove BOM and save with UTF8 without BOM
         [System.IO.File]::WriteAllText($claudeConfig, $jsonContent, [System.Text.UTF8Encoding]::new($false))
-        Write-ColoredOutput "Claude configuration updated" "Green"
+        Write-ColoredOutput "Claude configuration updated with configurable timeouts" "Green"
     }
     catch {
-        Write-ColoredOutput "Error updating Claude configuration: $_" "Red"
+        $errorMsg = "Error updating Claude configuration: $_"
+        Write-ColoredOutput $errorMsg "Red"
+        Write-ErrorLog -Message $errorMsg -ErrorRecord $_ -Component "ConfigUpdate"
+        throw "Failed to update Claude configuration"
     }
 }
 
@@ -533,12 +694,26 @@ function Show-Usage {
     Write-ColoredOutput "Mode: $($SelectedMode.ToUpper())" "Blue"
     Write-ColoredOutput "Hook Type: $HookType" "Blue"
     Write-Host ""
+    Write-ColoredOutput "Configuration:" "Blue"
+    Write-Host "- Enhanced error handling and logging enabled"
+    Write-Host "- Configurable timeouts via environment variables:"
+    Write-Host "  * CLAUDE_PRECOMPACT_TIMEOUT (default: 5000ms)"
+    Write-Host "  * CLAUDE_USER_PROMPT_TIMEOUT (default: 30000ms)"
+    Write-Host "  * CLAUDE_INJECTOR_TIMEOUT (default: 10000ms)"
+    Write-Host "- Logs are saved to: $env:USERPROFILE\.claude\logs\"
+    Write-Host ""
     Write-Host "Next steps:"
     Write-Host "1. Create CLAUDE.md files:"
     Write-Host "   - Global: $env:USERPROFILE\.claude\CLAUDE.md"
     Write-Host "   - Project-specific: <project-root>\CLAUDE.md"
     Write-Host ""
-    Write-Host "2. Restart Claude Code"
+    Write-Host "2. Optional: Set custom timeout values if needed"
+    Write-Host "   Example: `$env:CLAUDE_USER_PROMPT_TIMEOUT = 45000"
+    Write-Host ""
+    Write-Host "3. Enable debug mode for troubleshooting (optional):"
+    Write-Host "   `$env:CLAUDE_DEBUG = `"true`""
+    Write-Host ""
+    Write-Host "4. Restart Claude Code"
     Write-Host ""
 }
 
